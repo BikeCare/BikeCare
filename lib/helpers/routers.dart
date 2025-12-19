@@ -7,6 +7,7 @@ import '../widgets/register_page.dart';
 import '../widgets/register_success_page.dart';
 import '../widgets/welcome_2.dart';
 import '../widgets/welcome_1.dart';
+import '../widgets/homepage.dart';
 
 class AppRouter {
   // Định nghĩa hiệu ứng chuyển trang (slide từ phải sang)
@@ -21,9 +22,10 @@ class AppRouter {
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         return SlideTransition(
           position: animation.drive(
-            Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-              CurveTween(curve: Curves.easeInOut),
-            ),
+            Tween(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).chain(CurveTween(curve: Curves.easeInOut)),
           ),
           child: child,
         );
@@ -33,46 +35,45 @@ class AppRouter {
 
   // Cấu hình router
   static final GoRouter router = GoRouter(
-    initialLocation: '/register', 
+    initialLocation: '/login',
     routes: [
       GoRoute(
         path: '/login',
-        pageBuilder: (context, state) => _buildSlideTransition(
-          context,
-          state,
-          const LoginPage(),
-        ),
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const LoginPage()),
       ),
       GoRoute(
+        path: '/homepage',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+
+          return _buildSlideTransition(
+            context,
+            state,
+            HomePage(user: user), // ✅ KHÔNG CÒN userId
+          );
+        },
+      ),
+
+      GoRoute(
         path: '/register-success',
-        pageBuilder: (context, state) => _buildSlideTransition(
-          context,
-          state,
-          const RegisterSuccessPage(),
-        ),
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const RegisterSuccessPage()),
       ),
       GoRoute(
         path: '/register',
-        pageBuilder: (context, state) => _buildSlideTransition(
-          context,
-          state,
-          const RegisterPage(),
-        ),
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const RegisterPage()),
       ),
       GoRoute(
         path: '/welcome-2',
-        pageBuilder: (context, state) => _buildSlideTransition(
-          context,
-          state,
-          const WelcomePage2(),
-        ),
-      ),GoRoute(
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const WelcomePage2()),
+      ),
+      GoRoute(
         path: '/welcome-1',
-        pageBuilder: (context, state) => _buildSlideTransition(
-          context,
-          state,
-          const WelcomePage1(),
-        ),
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const WelcomePage1()),
       ),
     ],
   );

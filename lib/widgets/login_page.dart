@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../helpers/utils.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,8 +12,9 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _accountController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _accountController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -19,151 +23,188 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  /* ===================== HANDLERS ===================== */
+
+  Future<void> _handleLogin() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await loginUser(
+        username: _accountController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (user != null) {
+        context.go(
+          '/homepage',
+          extra: user, //
+        );
+      } else {
+        _showMessage('Sai username hoặc mật khẩu');
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showMessage(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  /* ===================== UI ===================== */
+
   @override
   Widget build(BuildContext context) {
-    // Màu sắc chủ đạo (Giống trang đăng ký)
-    const Color primaryColor = Color(0xFF1D3557);
-    const Color cardColor = Color(0xFFA8DADC);
+    const Color primaryBlue = Color(0xFF41ACD8);
+    const Color borderBlue = Color(0xFF59CBEF);
+
     return Scaffold(
-      body: Align(
-        alignment: Alignment.center,
-        child: Container(
-          // Giới hạn chiều rộng để đẹp hơn trên màn hình lớn
-          constraints: BoxConstraints(maxWidth: 450),
-          // Bọc thêm SingleChildScrollView để tránh lỗi khi bàn phím hiện
-          child: SingleChildScrollView(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    // Cập nhật shadow 
-                    color: Colors.black,
-                    blurRadius: 15,
-                    offset: Offset(0, 5),
-                  ),
-                ],
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ===== PROGRESS =====
+              const SizedBox(height: 24),
+              Container(
+                height: 6,
+                width: 120,
+                decoration: BoxDecoration(
+                  color: primaryBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Đăng nhập',
-                    style: TextStyle(
-                      fontSize: 30, 
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor, 
+
+              const SizedBox(height: 100),
+
+              // ===== TITLE =====
+              Center(
+                child: Text(
+                  'Đăng nhập',
+                  style: GoogleFonts.nunito(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    color: primaryBlue,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              _label('Tài khoản*'),
+              _input(_accountController, borderBlue),
+
+              const SizedBox(height: 20),
+
+              _label('Mật khẩu*'),
+              _input(_passwordController, borderBlue, obscure: true),
+
+              const SizedBox(height: 36),
+
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Quên mật khẩu',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 36),
+
+              // ===== LOGIN BUTTON =====
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  SizedBox(height: 24),
-                  TextField(
-                    controller: _accountController,
-                    decoration: InputDecoration(
-                      labelText: 'Tên đăng nhập',
-                      labelStyle: TextStyle(
-                        fontSize: 16, 
-                        color: primaryColor, 
-                      ),
-                      prefixIcon: Icon(Icons.person_outline, color: primaryColor),
-                      filled: true,
-                      fillColor: Colors.white, 
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      // Thêm viền khi focus
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: primaryColor, width: 2),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Mật khẩu',
-                      labelStyle: TextStyle(
-                        fontSize: 16,
-                        color: primaryColor, 
-                      ),
-                      prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      // Thêm viền khi focus
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: primaryColor, width: 2),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      //Chuyển tới dashboard
-                      context.go('/dashboard');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 5,
-                      shadowColor: Colors.black26,
-                      minimumSize: Size(double.infinity, 50),
-                    ),
-                    child: Text(
-                      'Đăng nhập',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Chưa có tài khoản? ',
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontSize: 17
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          //Chuyển sang trang đăng ký
-                          context.push('/register');
-                        },
-                        child: Text(
-                          'Đăng ký ngay',
-                          style: TextStyle(
-                            color: primaryColor,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          'Đăng nhập',
+                          style: GoogleFonts.nunito(
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            fontSize: 17,
+                            color: const Color(0xFFFFC107),
                           ),
                         ),
-                      ),
-                    ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ===== REGISTER LINK =====
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Bạn chưa có tài khoản?'),
+                  TextButton(
+                    onPressed: () => context.push('/register'),
+                    child: const Text(
+                      'Đăng ký',
+                      style: TextStyle(color: Color(0xFFFFC107)),
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  /* ===================== UI REUSE ===================== */
+
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
+    ),
+  );
+
+  Widget _input(
+    TextEditingController controller,
+    Color borderColor, {
+    bool obscure = false,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      style: GoogleFonts.nunito(fontSize: 16),
+      decoration: _inputDecoration(borderColor),
+    );
+  }
+
+  InputDecoration _inputDecoration(Color borderColor) {
+    return InputDecoration(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: borderColor, width: 2),
       ),
     );
   }

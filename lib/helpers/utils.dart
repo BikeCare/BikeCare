@@ -73,7 +73,7 @@ Future<void> insertData(
 }
 
 // =========================================================
-// CHECK USERNAME EXISTS
+// CHECK USERNAME EXISTS (REGISTER)
 // =========================================================
 Future<bool> checkUsernameExists(Database db, String username) async {
   final result = await db.query(
@@ -84,24 +84,22 @@ Future<bool> checkUsernameExists(Database db, String username) async {
   return result.isNotEmpty;
 }
 
+
 // =========================================================
-// REGISTER USER + VEHICLE
+// REGISTER USER + VEHICLE (LOCAL)
 // =========================================================
 Future<String?> registerUser({
   required String username,
   required String email,
   required String password,
   required String fullName,
-
-  // Vehicle info
   required String brand,
-  required String vehicleType, // "<175cc" | ">=175cc"
+  required String vehicleType,
 }) async {
   final db = await initializeDatabase();
 
-  // 1️⃣ Check username tồn tại
-  final isExist = await checkUsernameExists(db, username);
-  if (isExist) {
+  // 1️⃣ Check username
+  if (await checkUsernameExists(db, username)) {
     return 'USERNAME_EXISTS';
   }
 
@@ -116,7 +114,7 @@ Future<String?> registerUser({
     'username': username,
     'email': email,
     'password': password,
-    'full_name': fullName, // (hash sau)
+    'full_name': fullName,
   });
 
   // 4️⃣ Insert VEHICLE
@@ -129,3 +127,85 @@ Future<String?> registerUser({
 
   return null; // SUCCESS
 }
+
+// =========================================================
+// SAVE USER'S VEHICLE
+// =========================================================
+
+Future<void> saveUserVehicle({
+  required String userId,
+  required String brand,
+  required String vehicleType,
+}) async {
+  final db = await initializeDatabase();
+
+  await db.insert('vehicles', {
+    'vehicle_id': DateTime.now().millisecondsSinceEpoch.toString(),
+    'brand': brand,
+    'vehicle_type': vehicleType,
+    'user_id': userId,
+  });
+}
+
+
+
+// =========================================================
+// LOGIN WITH USERNAME + PASSWORD (LOCAL ONLY)
+// =========================================================
+Future<Map<String, dynamic>?> loginUser({
+  required String username,
+  required String password,
+}) async {
+  final db = await initializeDatabase();
+
+  final result = await db.query(
+    'users',
+    where: 'username = ? AND password = ?',
+    whereArgs: [username, password],
+  );
+
+  return result.isNotEmpty ? result.first : null;
+}
+
+// =========================================================
+// GET USER VEHICLES
+// =========================================================
+Future<List<Map<String, dynamic>>> getUserVehicles(String userId) async {
+  final db = await initializeDatabase();
+
+  final result = await db.query(
+    'vehicles',
+    where: 'user_id = ?',
+    whereArgs: [userId],
+    orderBy: 'warranty_start DESC', // optional
+  );
+
+  return result;
+}
+
+// =========================================================
+// VEHICLE DISPLAY NAME (vehicle_name -> brand fallback)
+// =========================================================
+String getVehicleDisplayName(Map<String, dynamic> vehicle) {
+  final name = vehicle['vehicle_name'];
+  final brand = vehicle['brand'];
+
+  if (name != null && name.toString().trim().isNotEmpty) {
+    return name;
+  }
+
+  return brand; // fallback nếu chưa đặt tên xe
+}
+
+// =========================================================
+// VEHICLE IMAGE BY TYPE
+// =========================================================
+String getVehicleImageByType(String vehicleType) {
+  switch (vehicleType) {
+    case '<175cc':
+      return 'images/motorbike.png';
+    default:
+      return 'images/motor.png';
+  }
+}
+

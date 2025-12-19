@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../helpers/utils.dart'; //
+import '../helpers/utils.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -131,7 +131,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 20),
 
               _label('Họ tên*'),
-              _input(_fullNameCtrl, borderBlue, obscure: true),
+              _input(_fullNameCtrl, borderBlue),
 
               const SizedBox(height: 20),
 

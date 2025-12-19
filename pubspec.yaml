@@ -68,6 +68,22 @@ flutter:
   assets:
     - images/bike.png
     - images/illustration.png
+    - images/google-logo.png
+    - images/calendar.png
+    - images/emergency.png
+    - images/garage.png
+    - images/search.png
+    - images/tips.png
+
+    - images/history.png
+    - images/home.png
+    - images/profile.png
+    - images/find.png
+    - images/gara.png
+
+    - images/motorbike.png
+    - images/motor.png
+
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
