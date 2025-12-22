@@ -84,7 +84,6 @@ Future<bool> checkUsernameExists(Database db, String username) async {
   return result.isNotEmpty;
 }
 
-
 // =========================================================
 // REGISTER USER + VEHICLE (LOCAL)
 // =========================================================
@@ -147,8 +146,6 @@ Future<void> saveUserVehicle({
   });
 }
 
-
-
 // =========================================================
 // LOGIN WITH USERNAME + PASSWORD (LOCAL ONLY)
 // =========================================================
@@ -209,3 +206,45 @@ String getVehicleImageByType(String vehicleType) {
   }
 }
 
+Future<bool> resetPassword({
+  required String username,
+  required String email,
+  required String newPassword,
+}) async {
+  final db = await initializeDatabase();
+
+  final result = await db.query(
+    'users',
+    where: 'username = ? AND email = ?',
+    whereArgs: [username, email],
+  );
+
+  if (result.isEmpty) return false;
+
+  await db.update(
+    'users',
+    {'password': newPassword},
+    where: 'username = ?',
+    whereArgs: [username],
+  );
+
+  return true;
+}
+
+// =========================================================
+// Homepage
+// =========================================================
+
+String getLastName(String fullName) {
+  final parts = fullName.trim().split(RegExp(r'\s+'));
+  return parts.isNotEmpty ? parts.last : fullName;
+}
+
+double getVehicleImageHeight(String vehicleType) {
+  switch (vehicleType) {
+    case '<175cc':
+      return 110;
+    default:
+      return 95;
+  }
+}

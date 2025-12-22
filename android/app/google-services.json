@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1064216493814",
+    "project_id": "bikecare-app",
+    "storage_bucket": "bikecare-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1064216493814:android:f83e7380a3db32d002b6d7",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt4DYdkoOOpvgosb_wJiZ4mzjd4OU8CS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

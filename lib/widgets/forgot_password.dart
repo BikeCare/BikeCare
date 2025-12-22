@@ -4,46 +4,57 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../helpers/utils.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   // ================= CONTROLLERS =================
-  final TextEditingController _accountCtrl = TextEditingController();
-  final TextEditingController _passwordCtrl = TextEditingController();
+  final TextEditingController _usernameCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+  final TextEditingController _newPasswordCtrl = TextEditingController();
 
   bool _isLoading = false;
 
   // ================= LIFECYCLE =================
   @override
   void dispose() {
-    _accountCtrl.dispose();
-    _passwordCtrl.dispose();
+    _usernameCtrl.dispose();
+    _emailCtrl.dispose();
+    _newPasswordCtrl.dispose();
     super.dispose();
   }
 
   // ================= HANDLER =================
-  Future<void> _handleLogin() async {
+  Future<void> _handleResetPassword() async {
     if (_isLoading) return;
+
+    if (_usernameCtrl.text.isEmpty ||
+        _emailCtrl.text.isEmpty ||
+        _newPasswordCtrl.text.isEmpty) {
+      _showMessage('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      final user = await loginUser(
-        username: _accountCtrl.text.trim(),
-        password: _passwordCtrl.text.trim(),
+      final success = await resetPassword(
+        username: _usernameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        newPassword: _newPasswordCtrl.text.trim(),
       );
 
       if (!mounted) return;
 
-      if (user != null) {
-        context.go('/homepage', extra: user);
+      if (success) {
+        _showMessage('Đặt lại mật khẩu thành công');
+        context.go('/login');
       } else {
-        _showMessage('Sai username hoặc mật khẩu');
+        _showMessage('Username hoặc email không đúng');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -75,10 +86,8 @@ class _LoginPageState extends State<LoginPage> {
               _buildTitle(context, primaryBlue),
               const SizedBox(height: 32),
               _buildForm(borderBlue),
-              const SizedBox(height: 24),
-              _buildLoginButton(primaryBlue),
-              const SizedBox(height: 24),
-              _buildRegisterLink(),
+              const SizedBox(height: 32),
+              _buildResetButton(primaryBlue),
             ],
           ),
         ),
@@ -101,11 +110,11 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, size: 26),
-            onPressed: () => context.go('/welcome-2'),
+            onPressed: () => context.go('/login'),
           ),
           const Spacer(),
           Text(
-            'Đăng nhập',
+            'Quên mật khẩu',
             style: GoogleFonts.nunito(
               fontSize: 28,
               fontWeight: FontWeight.w600,
@@ -120,29 +129,21 @@ class _LoginPageState extends State<LoginPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _label('Tài khoản*'),
-          _input(_accountCtrl, borderColor),
+          _input(_usernameCtrl, borderColor),
           const SizedBox(height: 20),
-          _label('Mật khẩu*'),
-          _input(_passwordCtrl, borderColor, obscure: true),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: () => context.push('/forgot-password'),
-              child: const Text(
-                'Quên mật khẩu',
-                style: TextStyle(decoration: TextDecoration.underline),
-              ),
-            ),
-          ),
+          _label('Email*'),
+          _input(_emailCtrl, borderColor),
+          const SizedBox(height: 20),
+          _label('Mật khẩu mới*'),
+          _input(_newPasswordCtrl, borderColor, obscure: true),
         ],
       );
 
-  Widget _buildLoginButton(Color color) => SizedBox(
+  Widget _buildResetButton(Color color) => SizedBox(
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: _isLoading ? null : _handleLogin,
+          onPressed: _isLoading ? null : _handleResetPassword,
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
             shape: RoundedRectangleBorder(
@@ -152,28 +153,14 @@ class _LoginPageState extends State<LoginPage> {
           child: _isLoading
               ? const CircularProgressIndicator(color: Colors.white)
               : Text(
-                  'Đăng nhập',
+                  'Đặt lại mật khẩu',
                   style: GoogleFonts.nunito(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFFFFC107),
                   ),
                 ),
         ),
-      );
-
-  Widget _buildRegisterLink() => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('Bạn chưa có tài khoản?'),
-          TextButton(
-            onPressed: () => context.push('/register'),
-            child: const Text(
-              'Đăng ký',
-              style: TextStyle(color: Color(0xFFFFC107)),
-            ),
-          ),
-        ],
       );
 
   // ================= REUSABLE =================

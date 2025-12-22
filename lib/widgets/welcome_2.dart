@@ -60,7 +60,7 @@ class _WelcomePage2State extends State<WelcomePage2> {
                         color: primaryBlue,
                         shadows: [
                           Shadow(
-                            color: Colors.amber.withOpacity(0.8),
+                            color: Colors.amber.withValues(alpha: 0.8),
                             offset: const Offset(2, 2),
                           ),
                         ],
@@ -125,7 +125,7 @@ class _WelcomePage2State extends State<WelcomePage2> {
                     ElevatedButton(
                       onPressed: () => context.push('/register'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryBlue.withOpacity(0.85),
+                        backgroundColor: primaryBlue.withValues(alpha: 0.85),
                         minimumSize: const Size(double.infinity, 56),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
