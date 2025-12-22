@@ -21,6 +21,10 @@ Future<Database> initializeDatabase() async {
   return openDatabase(
     path,
     version: 1,
+    onConfigure: (db) async {
+      // Bật foreign key
+      await db.execute('PRAGMA foreign_keys = ON');
+    },
     onCreate: (db, version) async {
       // ================= USERS =================
       await db.execute('''
@@ -53,6 +57,89 @@ Future<Database> initializeDatabase() async {
           FOREIGN KEY (user_id) REFERENCES users(user_id)
         )
       ''');
+
+      // ================= GARAGES =================
+      await db.execute('''
+        CREATE TABLE garages (
+          garage_id TEXT PRIMARY KEY,
+          garage_name TEXT,
+          address TEXT,
+          latitude REAL,
+          longitude REAL,
+          phone TEXT,
+          rating REAL
+        )
+      ''');
+
+      // ================= SERVICES =================
+      await db.execute('''
+        CREATE TABLE services (
+          service_id TEXT PRIMARY KEY,
+          service_name TEXT
+        )
+      ''');
+
+      // ================= BOOKINGS =================
+      await db.execute('''
+        CREATE TABLE bookings (
+          booking_id TEXT PRIMARY KEY,
+          user_id TEXT,
+          vehicle_id TEXT,
+          garage_id TEXT,
+          booking_date TEXT,
+          booking_time TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(user_id),
+          FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
+          FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
+        )
+      ''');
+
+      // ================= BOOKING_SERVICES =================
+      await db.execute('''
+        CREATE TABLE booking_services (
+          id TEXT PRIMARY KEY,
+          booking_id TEXT,
+          service_id TEXT,
+          FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
+          FOREIGN KEY (service_id) REFERENCES services(service_id)
+        )
+      ''');
+
+      // ================= EXPENSE_CATEGORIES =================
+      await db.execute('''
+        CREATE TABLE expense_categories (
+          category_id TEXT PRIMARY KEY,
+          category_name TEXT
+        )
+      ''');
+
+      // ================= EXPENSES =================
+      await db.execute('''
+        CREATE TABLE expenses (
+          expense_id TEXT PRIMARY KEY,
+          user_id TEXT,
+          vehicle_id TEXT,
+          booking_id TEXT,
+          amount REAL,
+          expense_date TEXT,
+          category_id TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(user_id),
+          FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
+          FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
+          FOREIGN KEY (category_id) REFERENCES expense_categories(category_id)
+        )
+      ''');
+
+      // ================= FAVORITES =================
+      await db.execute('''
+        CREATE TABLE favorites (
+          favorite_id TEXT PRIMARY KEY,
+          user_id TEXT,
+          garage_id TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(user_id),
+          FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
+        )
+      ''');
     },
   );
 }
@@ -83,7 +170,6 @@ Future<bool> checkUsernameExists(Database db, String username) async {
   );
   return result.isNotEmpty;
 }
-
 
 // =========================================================
 // REGISTER USER + VEHICLE (LOCAL)
@@ -147,8 +233,6 @@ Future<void> saveUserVehicle({
   });
 }
 
-
-
 // =========================================================
 // LOGIN WITH USERNAME + PASSWORD (LOCAL ONLY)
 // =========================================================
@@ -209,3 +293,24 @@ String getVehicleImageByType(String vehicleType) {
   }
 }
 
+// =========================================================
+// GET GENERIC ITEMS
+// =========================================================
+Future<List<Map<String, dynamic>>> getItems(
+  Database db,
+  String tableName,
+) async {
+  return await db.query(tableName);
+}
+
+// =========================================================
+// DELETE DATA
+// =========================================================
+Future<int> deleteData(
+  Database db,
+  String tableName,
+  String where,
+  List<Object?> whereArgs,
+) async {
+  return await db.delete(tableName, where: where, whereArgs: whereArgs);
+}

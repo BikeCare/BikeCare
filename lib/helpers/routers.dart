@@ -8,6 +8,7 @@ import '../widgets/register_success_page.dart';
 import '../widgets/welcome_2.dart';
 import '../widgets/welcome_1.dart';
 import '../widgets/homepage.dart';
+import '../booking/booking_flow.dart';
 
 class AppRouter {
   // Định nghĩa hiệu ứng chuyển trang (slide từ phải sang)
@@ -47,11 +48,7 @@ class AppRouter {
         pageBuilder: (context, state) {
           final user = state.extra as Map<String, dynamic>;
 
-          return _buildSlideTransition(
-            context,
-            state,
-            HomePage(user: user),
-          );
+          return _buildSlideTransition(context, state, HomePage(user: user));
         },
       ),
 
@@ -74,6 +71,13 @@ class AppRouter {
         path: '/welcome-1',
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const WelcomePage1()),
+      ),
+      GoRoute(
+        path: '/booking',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>?;
+          return _buildSlideTransition(context, state, BookingFlow(user: user));
+        },
       ),
     ],
   );

@@ -258,7 +258,7 @@ class _HomePageState extends State<HomePage> {
                             'images/calendar.png',
                             'Đặt lịch bảo dưỡng',
                             onTap: () {
-                              context.go('/dashboard', extra: widget.user);
+                              context.push('/booking', extra: widget.user);
                             },
                           ),
                         ),
