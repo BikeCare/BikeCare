@@ -85,6 +85,13 @@ class AppRouter {
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const WelcomePage1()),
       ),
+      GoRoute(
+        path: '/booking',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>?;
+          return _buildSlideTransition(context, state, BookingFlow(user: user));
+        },
+      ),
     ],
   );
 }
