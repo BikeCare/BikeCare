@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../helpers/utils.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -22,14 +22,14 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _vehicleType; // <175cc | >=175cc
   bool _isLoading = false;
 
-    @override
+  @override
   void dispose() {
     _usernameCtrl.dispose();
     _fullNameCtrl.dispose();
     _passwordCtrl.dispose();
     _emailCtrl.dispose();
     _brandCtrl.dispose();
-    super.dispose(); // 
+    super.dispose(); //
   }
 
   // ================= SUBMIT =================
@@ -47,26 +47,50 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
 
-    final result = await registerUser(
-      username: _usernameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      fullName: _fullNameCtrl.text.trim(),
-      password: _passwordCtrl.text.trim(),
-      brand: _brandCtrl.text.trim(),
-      vehicleType: _vehicleType!,
-    );
+    try {
+      // 1️⃣ Tạo user Firebase
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailCtrl.text.trim(),
+            password: _passwordCtrl.text.trim(),
+          );
 
-    if (!mounted) return; // ✅ QUAN TRỌNG
+      // 2️⃣ Gửi email xác thực
+      await credential.user!.sendEmailVerification();
 
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (result == 'USERNAME_EXISTS') {
-      _showMessage('Username đã tồn tại');
-      return;
+      // 3️⃣ Chuyển sang trang chờ xác thực
+      context.push(
+        '/verify-email',
+        extra: {
+          'username': _usernameCtrl.text.trim(),
+          'email': _emailCtrl.text.trim(),
+          'password': _passwordCtrl.text.trim(),
+          'fullName': _fullNameCtrl.text.trim(),
+          'brand': _brandCtrl.text.trim(),
+          'vehicleType': _vehicleType!,
+        },
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          _showMessage('Email đã được sử dụng');
+          break;
+        case 'weak-password':
+          _showMessage('Mật khẩu quá yếu');
+          break;
+        case 'invalid-email':
+          _showMessage('Email không hợp lệ');
+          break;
+        default:
+          _showMessage('Đăng ký thất bại');
+      }
     }
-
-    // ✅ SUCCESS
-    context.pushReplacement('/register-success');
   }
 
   void _showMessage(String msg) {

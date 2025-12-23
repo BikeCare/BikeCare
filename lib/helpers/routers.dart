@@ -3,12 +3,13 @@ import 'package:go_router/go_router.dart';
 
 // Import các trang
 import '../widgets/login_page.dart';
+import '../widgets/forgot_password.dart';
 import '../widgets/register_page.dart';
 import '../widgets/register_success_page.dart';
 import '../widgets/welcome_2.dart';
 import '../widgets/welcome_1.dart';
 import '../widgets/homepage.dart';
-import '../booking/booking_flow.dart';
+import '../widgets/verify_email_page.dart';
 
 class AppRouter {
   // Định nghĩa hiệu ứng chuyển trang (slide từ phải sang)
@@ -44,6 +45,11 @@ class AppRouter {
             _buildSlideTransition(context, state, const LoginPage()),
       ),
       GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const ForgotPasswordPage()),
+      ),
+      GoRoute(
         path: '/homepage',
         pageBuilder: (context, state) {
           final user = state.extra as Map<String, dynamic>;
@@ -61,6 +67,13 @@ class AppRouter {
         path: '/register',
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const RegisterPage()),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return VerifyEmailPage(data: data);
+        },
       ),
       GoRoute(
         path: '/welcome-2',

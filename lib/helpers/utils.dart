@@ -293,24 +293,45 @@ String getVehicleImageByType(String vehicleType) {
   }
 }
 
-// =========================================================
-// GET GENERIC ITEMS
-// =========================================================
-Future<List<Map<String, dynamic>>> getItems(
-  Database db,
-  String tableName,
-) async {
-  return await db.query(tableName);
+Future<bool> resetPassword({
+  required String username,
+  required String email,
+  required String newPassword,
+}) async {
+  final db = await initializeDatabase();
+
+  final result = await db.query(
+    'users',
+    where: 'username = ? AND email = ?',
+    whereArgs: [username, email],
+  );
+
+  if (result.isEmpty) return false;
+
+  await db.update(
+    'users',
+    {'password': newPassword},
+    where: 'username = ?',
+    whereArgs: [username],
+  );
+
+  return true;
 }
 
 // =========================================================
-// DELETE DATA
+// Homepage
 // =========================================================
-Future<int> deleteData(
-  Database db,
-  String tableName,
-  String where,
-  List<Object?> whereArgs,
-) async {
-  return await db.delete(tableName, where: where, whereArgs: whereArgs);
+
+String getLastName(String fullName) {
+  final parts = fullName.trim().split(RegExp(r'\s+'));
+  return parts.isNotEmpty ? parts.last : fullName;
+}
+
+double getVehicleImageHeight(String vehicleType) {
+  switch (vehicleType) {
+    case '<175cc':
+      return 110;
+    default:
+      return 95;
+  }
 }
