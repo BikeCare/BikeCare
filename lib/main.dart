@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'helpers/routers.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_core/firebase_core.dart';
-import '../helpers/utils.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await deleteOldDatabase();
+  await initializeDateFormatting('vi_VN', null);
+
   runApp(const MyApp());
 }
 

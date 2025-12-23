@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/foundation.dart';
+import '../widgets/maintenance_page/maintenance_tip_seed.dart';
 
 // =========================================================
 // DELETE OLD DB (DEV ONLY)
@@ -18,11 +20,10 @@ Future<Database> initializeDatabase() async {
   final dbPath = await getDatabasesPath();
   final path = join(dbPath, 'bikecare_database.db');
 
-  return openDatabase(
+  final db = await openDatabase(
     path,
-    version: 1,
+    version: 2,
     onConfigure: (db) async {
-      // Bật foreign key
       await db.execute('PRAGMA foreign_keys = ON');
     },
     onCreate: (db, version) async {
@@ -34,7 +35,6 @@ Future<Database> initializeDatabase() async {
           email TEXT NOT NULL,
           password TEXT NOT NULL,
           full_name TEXT NOT NULL,
-
           phone TEXT,
           gender TEXT,
           date_of_birth TEXT,
@@ -58,90 +58,133 @@ Future<Database> initializeDatabase() async {
         )
       ''');
 
-      // ================= GARAGES =================
+      // ================= MAINTENANCE TIPS =================
       await db.execute('''
-        CREATE TABLE garages (
-          garage_id TEXT PRIMARY KEY,
-          garage_name TEXT,
-          address TEXT,
-          latitude REAL,
-          longitude REAL,
-          phone TEXT,
-          rating REAL
+        CREATE TABLE maintenance_tips (
+          tip_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tip_title TEXT NOT NULL,
+          tip_summary TEXT NOT NULL,
+          tip_content TEXT NOT NULL
         )
       ''');
-
-      // ================= SERVICES =================
-      await db.execute('''
-        CREATE TABLE services (
-          service_id TEXT PRIMARY KEY,
-          service_name TEXT
-        )
-      ''');
-
-      // ================= BOOKINGS =================
-      await db.execute('''
-        CREATE TABLE bookings (
-          booking_id TEXT PRIMARY KEY,
-          user_id TEXT,
-          vehicle_id TEXT,
-          garage_id TEXT,
-          booking_date TEXT,
-          booking_time TEXT,
-          FOREIGN KEY (user_id) REFERENCES users(user_id),
-          FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
-          FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
-        )
-      ''');
-
-      // ================= BOOKING_SERVICES =================
-      await db.execute('''
-        CREATE TABLE booking_services (
-          id TEXT PRIMARY KEY,
-          booking_id TEXT,
-          service_id TEXT,
-          FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
-          FOREIGN KEY (service_id) REFERENCES services(service_id)
-        )
-      ''');
-
-      // ================= EXPENSE_CATEGORIES =================
+      // ================= EXPENSES =================
       await db.execute('''
         CREATE TABLE expense_categories (
-          category_id TEXT PRIMARY KEY,
-          category_name TEXT
+          category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          category_name TEXT NOT NULL UNIQUE
         )
       ''');
-
-      // ================= EXPENSES =================
       await db.execute('''
         CREATE TABLE expenses (
           expense_id TEXT PRIMARY KEY,
-          user_id TEXT,
-          vehicle_id TEXT,
-          booking_id TEXT,
-          amount REAL,
-          expense_date TEXT,
-          category_id TEXT,
+          user_id TEXT NOT NULL,
+          vehicle_id TEXT NOT NULL,
+          booking_id TEXT,                 -- nullable (để mở rộng sau)
+          amount INTEGER NOT NULL,         -- lưu số dương
+          expense_date TEXT NOT NULL,      -- ISO yyyy-MM-dd
+          category_id INTEGER NOT NULL,
+          note TEXT,
+
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
           FOREIGN KEY (user_id) REFERENCES users(user_id),
           FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
-          FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
           FOREIGN KEY (category_id) REFERENCES expense_categories(category_id)
         )
       ''');
+    },
+    onUpgrade: (db, oldVersion, newVersion) async {
+      if (oldVersion < 2) {
+        // Migration từ version 1 lên 2: Thêm bảng expenses
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS expenses (
+            expense_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            vehicle_id TEXT NOT NULL,
+            booking_id TEXT,                 -- nullable (để mở rộng sau)
+            amount INTEGER NOT NULL,         -- lưu số dương
+            expense_date TEXT NOT NULL,      -- ISO yyyy-MM-dd
+            category_id INTEGER NOT NULL,
+            note TEXT,
 
-      // ================= FAVORITES =================
-      await db.execute('''
-        CREATE TABLE favorites (
-          favorite_id TEXT PRIMARY KEY,
-          user_id TEXT,
-          garage_id TEXT,
-          FOREIGN KEY (user_id) REFERENCES users(user_id),
-          FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
-        )
-      ''');
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
+            FOREIGN KEY (category_id) REFERENCES expense_categories(category_id)
+          )
+        ''');
+      }
     },
   );
+
+  // 🔥 QUAN TRỌNG NHẤT: seed cho DB CŨ (KHÔNG xoá data khác)
+  await seedMaintenanceTipsIfEmpty(db);
+  await seedExpenseCategoriesIfEmpty(db);
+  return db;
+}
+
+Future<void> seedExpenseCategoriesIfEmpty(Database db) async {
+  // đảm bảo bảng tồn tại nếu DB cũ
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS expense_categories (
+      category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_name TEXT NOT NULL UNIQUE
+    )
+  ''');
+
+  final count =
+      Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM expense_categories'),
+      ) ??
+      0;
+
+  if (count > 0) return;
+
+  final categories = [
+    'Bảo dưỡng định kỳ',
+    'Sửa chữa khẩn cấp',
+    'Nâng cấp & tân trang',
+    'Phụ tùng',
+  ];
+
+  final batch = db.batch();
+  for (final name in categories) {
+    batch.insert('expense_categories', {
+      'category_name': name,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+  await batch.commit(noResult: true);
+}
+
+Future<void> seedMaintenanceTipsIfEmpty(Database db) async {
+  // đảm bảo bảng tồn tại (phòng trường hợp DB cũ thiếu bảng)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS maintenance_tips (
+      tip_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tip_title TEXT NOT NULL,
+      tip_summary TEXT NOT NULL,
+      tip_content TEXT NOT NULL
+    )
+  ''');
+
+  final count =
+      Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM maintenance_tips'),
+      ) ??
+      0;
+
+  if (count > 0) return;
+
+  await db.transaction((txn) async {
+    final batch = txn.batch();
+    for (final tip in maintenanceTipsSeed) {
+      batch.insert('maintenance_tips', tip);
+    }
+    await batch.commit(noResult: true);
+  });
+
+  debugPrint('🌱 maintenance_tips seeded (batch)');
 }
 
 // =========================================================
@@ -211,6 +254,7 @@ Future<String?> registerUser({
     'user_id': userId,
   });
 
+  debugPrint('✅ User registered: $userId, vehicle: $vehicleId');
   return null; // SUCCESS
 }
 
@@ -225,8 +269,10 @@ Future<void> saveUserVehicle({
 }) async {
   final db = await initializeDatabase();
 
+  final uuid = const Uuid();
+
   await db.insert('vehicles', {
-    'vehicle_id': DateTime.now().millisecondsSinceEpoch.toString(),
+    'vehicle_id': uuid.v4(),
     'brand': brand,
     'vehicle_type': vehicleType,
     'user_id': userId,
@@ -248,7 +294,10 @@ Future<Map<String, dynamic>?> loginUser({
     whereArgs: [username, password],
   );
 
-  return result.isNotEmpty ? result.first : null;
+  if (result.isNotEmpty) {
+    return result.first;
+  }
+  return null;
 }
 
 // =========================================================
@@ -261,7 +310,7 @@ Future<List<Map<String, dynamic>>> getUserVehicles(String userId) async {
     'vehicles',
     where: 'user_id = ?',
     whereArgs: [userId],
-    orderBy: 'warranty_start DESC', // optional
+    orderBy: 'vehicle_id DESC', // optional
   );
 
   return result;
@@ -293,45 +342,95 @@ String getVehicleImageByType(String vehicleType) {
   }
 }
 
-Future<bool> resetPassword({
-  required String username,
-  required String email,
-  required String newPassword,
-}) async {
+// =========================================================
+// GET ALL MAINTENANCE TIPS
+// =========================================================
+Future<List<Map<String, dynamic>>> getMaintenanceTips() async {
   final db = await initializeDatabase();
 
+  return db.query('maintenance_tips', orderBy: 'tip_id DESC');
+}
+
+Future<Map<String, dynamic>?> getUserById(String userId) async {
+  final db = await initializeDatabase();
   final result = await db.query(
     'users',
-    where: 'username = ? AND email = ?',
-    whereArgs: [username, email],
+    where: 'user_id = ?',
+    whereArgs: [userId],
+    limit: 1,
   );
+  return result.isNotEmpty ? result.first : null;
+}
 
-  if (result.isEmpty) return false;
-
+Future<void> updateUserProfile({
+  required String userId,
+  String? phone,
+  String? location,
+  String? email,
+  String? dateOfBirth,
+  String? gender,
+}) async {
+  final db = await initializeDatabase();
   await db.update(
     'users',
-    {'password': newPassword},
-    where: 'username = ?',
-    whereArgs: [username],
+    {
+      'phone': phone,
+      'location': location,
+      'email': email,
+      'date_of_birth': dateOfBirth,
+      'gender': gender,
+    },
+    where: 'user_id = ?',
+    whereArgs: [userId],
   );
-
-  return true;
 }
 
-// =========================================================
-// Homepage
-// =========================================================
-
-String getLastName(String fullName) {
-  final parts = fullName.trim().split(RegExp(r'\s+'));
-  return parts.isNotEmpty ? parts.last : fullName;
+Future<List<Map<String, dynamic>>> getExpenseCategories() async {
+  final db = await initializeDatabase();
+  return db.query('expense_categories', orderBy: 'category_name ASC');
 }
 
-double getVehicleImageHeight(String vehicleType) {
-  switch (vehicleType) {
-    case '<175cc':
-      return 110;
-    default:
-      return 95;
-  }
+Future<void> addExpense({
+  required String userId,
+  required String vehicleId,
+  required int amount,
+  required String expenseDateIso, // yyyy-MM-dd
+  required int categoryId,
+  String? bookingId,
+  String? note,
+}) async {
+  final db = await initializeDatabase();
+  final uuid = const Uuid();
+
+  await db.insert('expenses', {
+    'expense_id': uuid.v4(),
+    'user_id': userId,
+    'vehicle_id': vehicleId,
+    'booking_id': bookingId,
+    'amount': amount,
+    'expense_date': expenseDateIso,
+    'category_id': categoryId,
+    'note': note ?? '',
+  });
+}
+
+Future<List<Map<String, dynamic>>> getUserExpenses(String userId) async {
+  final db = await initializeDatabase();
+
+  return db.rawQuery(
+    '''
+    SELECT 
+      e.expense_id,
+      e.amount,
+      e.expense_date,
+      e.note,
+      e.vehicle_id,
+      c.category_name
+    FROM expenses e
+    JOIN expense_categories c ON c.category_id = e.category_id
+    WHERE e.user_id = ?
+    ORDER BY e.expense_date DESC
+  ''',
+    [userId],
+  );
 }
