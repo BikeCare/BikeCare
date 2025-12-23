@@ -2,14 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // Import các trang
+
 import '../widgets/login_page.dart';
 import '../widgets/forgot_password.dart';
 import '../widgets/register_page.dart';
 import '../widgets/register_success_page.dart';
 import '../widgets/welcome_2.dart';
 import '../widgets/welcome_1.dart';
+import '../widgets/main_screen.dart';
 import '../widgets/homepage.dart';
 import '../widgets/verify_email_page.dart';
+import '../widgets/garage_list_page.dart';
+import '../widgets/garage_detail_page.dart';
+import '../widgets/favorite_page.dart';
+import '../widgets/add_vehicle_page.dart';
+
+
 
 class AppRouter {
   // Định nghĩa hiệu ứng chuyển trang (slide từ phải sang)
@@ -54,7 +62,7 @@ class AppRouter {
         pageBuilder: (context, state) {
           final user = state.extra as Map<String, dynamic>;
 
-          return _buildSlideTransition(context, state, HomePage(user: user));
+          return _buildSlideTransition(context, state, MainScreen(user: user));
         },
       ),
 
@@ -85,6 +93,29 @@ class AppRouter {
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const WelcomePage1()),
       ),
+      GoRoute(
+        path: '/garage/list',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const GarageListPage()),
+      ),
+      GoRoute(
+        path: '/garage/detail',
+        pageBuilder: (context, state) {
+          final garage = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(context, state, GarageDetailPage(garage: garage));
+        },
+      ),
+      GoRoute(
+        path: '/favorites',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const FavoritePage()),
+      ),
+      GoRoute(
+        path: '/add-vehicle',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const AddVehiclePage()),
+      ),
     ],
   );
+  
 }

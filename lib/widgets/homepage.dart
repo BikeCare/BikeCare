@@ -9,8 +9,9 @@ import '../helpers/utils.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> user;
+  final Function(int) onSwitchTab;
 
-  const HomePage({super.key, required this.user});
+  const HomePage({super.key, required this.user, required this.onSwitchTab});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -48,7 +49,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: _buildBottomNav(),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -274,7 +274,7 @@ class _HomePageState extends State<HomePage> {
               child: _utilityCard(
                 'images/calendar.png',
                 'Đặt lịch bảo dưỡng',
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () {},
               ),
             ),
             const SizedBox(width: 8),
@@ -283,7 +283,7 @@ class _HomePageState extends State<HomePage> {
                 'images/garage.png',
                 'Gara yêu thích',
                 imageSize: 55,
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () => context.push('/favorites'),
               ),
             ),
           ],
@@ -296,7 +296,7 @@ class _HomePageState extends State<HomePage> {
                 'images/tips.png',
                 'Mẹo bảo dưỡng',
                 imageSize: 60,
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () => {},
               ),
             ),
             const SizedBox(width: 8),
@@ -304,7 +304,7 @@ class _HomePageState extends State<HomePage> {
               child: _utilityCard(
                 'images/search.png',
                 'Tra cứu phạt nguội',
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () => {},
               ),
             ),
           ],
@@ -438,37 +438,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /* =========================================================
-   * BOTTOM NAV
-   * ========================================================= */
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.black,
-      selectedItemColor: const Color(0xFF92D6E3),
-      unselectedItemColor: Colors.white,
-      showUnselectedLabels: true,
-      items: [
-        _bottomItem('images/home.png', 'Trang chủ'),
-        _bottomItem('images/gara.png', 'Garage'),
-        _bottomItem('images/find.png', 'Tìm'),
-        _bottomItem('images/history.png', 'Lịch sử'),
-        _bottomItem('images/profile.png', 'Thông tin'),
-      ],
-    );
-  }
-
-  BottomNavigationBarItem _bottomItem(String iconPath, String label) {
-    return BottomNavigationBarItem(
-      icon: Image.asset(iconPath, height: 24, color: Colors.white),
-      activeIcon: Image.asset(
-        iconPath,
-        height: 24,
-        color: const Color(0xFF92D6E3),
-      ),
-      label: label,
-    );
-  }
 
   /* =========================================================
    * DATA & LOCATION
