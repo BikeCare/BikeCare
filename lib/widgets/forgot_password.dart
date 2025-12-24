@@ -2,7 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../helpers/utils.dart';
+import 'package:bikecare/helpers/utils.dart';
+
+// Temporary resetPassword function
+Future<bool> resetPassword({
+  required String username,
+  required String email,
+  required String newPassword,
+}) async {
+  final db = await initializeDatabase();
+
+  final result = await db.query(
+    'users',
+    where: 'username = ? AND email = ?',
+    whereArgs: [username, email],
+    limit: 1,
+  );
+
+  if (result.isEmpty) return false;
+
+  await db.update(
+    'users',
+    {'password': newPassword},
+    where: 'username = ? AND email = ?',
+    whereArgs: [username, email],
+  );
+
+  return true;
+}
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -62,8 +89,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ================= UI =================
@@ -98,83 +126,78 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   // ================= UI SECTIONS =================
 
   Widget _buildProgress(Color color) => Container(
-        height: 6,
-        width: 120,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
-        ),
-      );
+    height: 6,
+    width: 120,
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(10),
+    ),
+  );
 
   Widget _buildTitle(BuildContext context, Color color) => Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, size: 26),
-            onPressed: () => context.go('/login'),
-          ),
-          const Spacer(),
-          Text(
-            'Quên mật khẩu',
-            style: GoogleFonts.nunito(
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-          const Spacer(flex: 2),
-        ],
-      );
+    children: [
+      IconButton(
+        icon: const Icon(Icons.arrow_back, size: 26),
+        onPressed: () => context.go('/login'),
+      ),
+      const Spacer(),
+      Text(
+        'Quên mật khẩu',
+        style: GoogleFonts.nunito(
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+      const Spacer(flex: 2),
+    ],
+  );
 
   Widget _buildForm(Color borderColor) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label('Tài khoản*'),
-          _input(_usernameCtrl, borderColor),
-          const SizedBox(height: 20),
-          _label('Email*'),
-          _input(_emailCtrl, borderColor),
-          const SizedBox(height: 20),
-          _label('Mật khẩu mới*'),
-          _input(_newPasswordCtrl, borderColor, obscure: true),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _label('Tài khoản*'),
+      _input(_usernameCtrl, borderColor),
+      const SizedBox(height: 20),
+      _label('Email*'),
+      _input(_emailCtrl, borderColor),
+      const SizedBox(height: 20),
+      _label('Mật khẩu mới*'),
+      _input(_newPasswordCtrl, borderColor, obscure: true),
+    ],
+  );
 
   Widget _buildResetButton(Color color) => SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: _isLoading ? null : _handleResetPassword,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+    width: double.infinity,
+    height: 56,
+    child: ElevatedButton(
+      onPressed: _isLoading ? null : _handleResetPassword,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      ),
+      child: _isLoading
+          ? const CircularProgressIndicator(color: Colors.white)
+          : Text(
+              'Đặt lại mật khẩu',
+              style: GoogleFonts.nunito(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFFFFC107),
+              ),
             ),
-          ),
-          child: _isLoading
-              ? const CircularProgressIndicator(color: Colors.white)
-              : Text(
-                  'Đặt lại mật khẩu',
-                  style: GoogleFonts.nunito(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFFFC107),
-                  ),
-                ),
-        ),
-      );
+    ),
+  );
 
   // ================= REUSABLE =================
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: GoogleFonts.nunito(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
+    ),
+  );
 
   Widget _input(
     TextEditingController controller,
@@ -186,8 +209,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       obscureText: obscure,
       style: GoogleFonts.nunito(fontSize: 16),
       decoration: InputDecoration(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: _border(borderColor),
         enabledBorder: _border(borderColor),
         focusedBorder: _border(borderColor, width: 2),

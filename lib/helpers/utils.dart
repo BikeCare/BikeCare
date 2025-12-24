@@ -2,7 +2,11 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
-import '../widgets/maintenance_page/maintenance_tip_seed.dart';
+import '../widgets/booking/mock_seed_booking.dart';
+
+// import '../widgets/maintenance_page/maintenance_tip_seed.dart';
+
+// Test comment to refresh analyzer
 
 // =========================================================
 // DELETE OLD DB (DEV ONLY)
@@ -11,6 +15,22 @@ Future<void> deleteOldDatabase() async {
   final dbPath = await getDatabasesPath();
   final path = join(dbPath, 'bikecare_database.db');
   await deleteDatabase(path);
+}
+
+// =========================================================
+// GENERIC GET ITEMS (USED BY BOOKING FLOW WHICH PASSES DB)
+// =========================================================
+Future<List<Map<String, dynamic>>> getItems(
+  Database db,
+  String tableName, {
+  String? orderBy,
+}) async {
+  try {
+    return await db.query(tableName, orderBy: orderBy);
+  } catch (e) {
+    debugPrint('Error in getItems($tableName): $e');
+    return <Map<String, dynamic>>[];
+  }
 }
 
 // =========================================================
@@ -67,6 +87,53 @@ Future<Database> initializeDatabase() async {
           tip_content TEXT NOT NULL
         )
       ''');
+
+      // ================= GARAGES =================
+      await db.execute('''
+        CREATE TABLE garages (
+          garage_id TEXT PRIMARY KEY,
+          garage_name TEXT,
+          address TEXT,
+          latitude REAL,
+          longitude REAL,
+          phone TEXT,
+          rating REAL
+        )
+      ''');
+
+      // ================= SERVICES =================
+      await db.execute('''
+        CREATE TABLE services (
+          service_id TEXT PRIMARY KEY,
+          service_name TEXT
+        )
+      ''');
+
+      // ================= BOOKINGS =================
+      await db.execute('''
+        CREATE TABLE bookings (
+          booking_id TEXT PRIMARY KEY,
+          user_id TEXT,
+          vehicle_id TEXT,
+          garage_id TEXT,
+          booking_date TEXT,
+          booking_time TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(user_id),
+          FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
+          FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
+        )
+      ''');
+
+      // ================= BOOKING_SERVICES =================
+      await db.execute('''
+        CREATE TABLE booking_services (
+          id TEXT PRIMARY KEY,
+          booking_id TEXT,
+          service_id TEXT,
+          FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
+          FOREIGN KEY (service_id) REFERENCES services(service_id)
+        )
+      ''');
       // ================= EXPENSES =================
       await db.execute('''
         CREATE TABLE expense_categories (
@@ -90,6 +157,16 @@ Future<Database> initializeDatabase() async {
           FOREIGN KEY (user_id) REFERENCES users(user_id),
           FOREIGN KEY (vehicle_id) REFERENCES vehicles(vehicle_id),
           FOREIGN KEY (category_id) REFERENCES expense_categories(category_id)
+        )
+      ''');
+      // ================= FAVORITES =================
+      await db.execute('''
+        CREATE TABLE favorites (
+          favorite_id TEXT PRIMARY KEY,
+          user_id TEXT,
+          garage_id TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(user_id),
+          FOREIGN KEY (garage_id) REFERENCES garages(garage_id)
         )
       ''');
     },
@@ -121,6 +198,7 @@ Future<Database> initializeDatabase() async {
   // 🔥 QUAN TRỌNG NHẤT: seed cho DB CŨ (KHÔNG xoá data khác)
   await seedMaintenanceTipsIfEmpty(db);
   await seedExpenseCategoriesIfEmpty(db);
+  await MockSeed.seedBookingMockData(db);
   return db;
 }
 
@@ -178,9 +256,9 @@ Future<void> seedMaintenanceTipsIfEmpty(Database db) async {
 
   await db.transaction((txn) async {
     final batch = txn.batch();
-    for (final tip in maintenanceTipsSeed) {
-      batch.insert('maintenance_tips', tip);
-    }
+    // for (final tip in maintenanceTipsSeed) {
+    //   batch.insert('maintenance_tips', tip);
+    // }
     await batch.commit(noResult: true);
   });
 
@@ -298,6 +376,35 @@ Future<Map<String, dynamic>?> loginUser({
     return result.first;
   }
   return null;
+}
+
+// =========================================================
+// RESET PASSWORD (LOCAL)
+// =========================================================
+Future<bool> resetPassword({
+  required String username,
+  required String email,
+  required String newPassword,
+}) async {
+  final db = await initializeDatabase();
+
+  final result = await db.query(
+    'users',
+    where: 'username = ? AND email = ?',
+    whereArgs: [username, email],
+    limit: 1,
+  );
+
+  if (result.isEmpty) return false;
+
+  await db.update(
+    'users',
+    {'password': newPassword},
+    where: 'username = ? AND email = ?',
+    whereArgs: [username, email],
+  );
+
+  return true;
 }
 
 // =========================================================

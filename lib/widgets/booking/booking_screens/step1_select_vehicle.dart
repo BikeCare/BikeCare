@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
-import '../../helpers/utils.dart';
-import '../booking models/booking_state.dart';
+// import 'package:bikecare/helpers/utils.dart';
+import '../booking_models/booking_state.dart';
+
+// Temporary getItems function
+Future<List<Map<String, dynamic>>> getItems(
+  Database db,
+  String tableName, {
+  String? orderBy,
+}) async {
+  try {
+    return await db.query(tableName, orderBy: orderBy);
+  } catch (e) {
+    debugPrint('Error in getItems($tableName): $e');
+    return <Map<String, dynamic>>[];
+  }
+}
 
 class Step1SelectVehicle extends StatefulWidget {
   final BookingState booking;
   final VoidCallback onNext;
+  final VoidCallback onBack;
   final Database db; // Nhận database
 
   const Step1SelectVehicle({
     super.key,
     required this.booking,
     required this.onNext,
+    required this.onBack,
     required this.db,
   });
 
@@ -33,9 +49,20 @@ class _Step1SelectVehicleState extends State<Step1SelectVehicle> {
 
   Future<void> _loadData() async {
     try {
-      // Gọi hàm getItems từ utils.dart hoặc dùng db.query trực tiếp
-      final v = await getItems(widget.db, 'vehicles');
       final g = await getItems(widget.db, 'garages');
+      if (widget.booking.userId == null) {
+        setState(() {
+          vehicles = [];
+          garages = g;
+          isLoading = false;
+        });
+        return;
+      }
+      final v = await widget.db.query(
+        'vehicles',
+        where: 'user_id = ?',
+        whereArgs: [widget.booking.userId],
+      );
 
       if (mounted) {
         setState(() {
@@ -45,12 +72,8 @@ class _Step1SelectVehicleState extends State<Step1SelectVehicle> {
         });
       }
     } catch (e) {
-      print('Error loading data step 1: $e');
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      debugPrint('Error loading data step 1: $e');
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -68,7 +91,10 @@ class _Step1SelectVehicleState extends State<Step1SelectVehicle> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        leading: const BackButton(color: Colors.black),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: widget.onBack, // ✅ về homepage khi đang step 1
+        ),
         centerTitle: true,
         title: const Text(
           'Đặt lịch bảo dưỡng',
@@ -94,14 +120,14 @@ class _Step1SelectVehicleState extends State<Step1SelectVehicle> {
             ),
             const SizedBox(height: 8),
             _DropdownField(
-              hint: 'Chọn xe từ garage',
+              hint: 'Chọn xe cần bảo dưỡng',
               value: widget.booking.vehicleId,
               items: vehicles,
               // Map DB keys to standardized keys for dropdown if needed,
               // or just pass list and handle inside.
               // Here we pass List<Map<String, dynamic>>
               idKey: 'vehicle_id',
-              nameKey: 'vehicle_name', // or brand/license_plate
+              nameKey: 'brand', // or brand/license_plate
               onSelected: (v) {
                 setState(() {
                   widget.booking.vehicleId = v;
@@ -320,7 +346,11 @@ class _DropdownFieldState extends State<_DropdownField> {
               child: Column(
                 children: widget.items.map((item) {
                   final id = item[widget.idKey].toString();
-                  final name = item[widget.nameKey].toString();
+                  final raw = item[widget.nameKey];
+                  final name = (raw == null || raw.toString().trim().isEmpty)
+                      ? '(Không có tên)'
+                      : raw.toString();
+
                   return InkWell(
                     onTap: () {
                       setState(() {

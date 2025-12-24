@@ -12,6 +12,9 @@ import '../widgets/services/traffic_fine_page.dart';
 import '../widgets/maintenance_page/maintenance_tips_page.dart';
 import '../widgets/profile_page.dart';
 import '../widgets/history_expenses_page.dart';
+import '../widgets/forgot_password.dart';
+import '../widgets/verify_email_page.dart';
+import '../widgets/booking/booking_flow.dart';
 
 class AppRoutes {
   static const trafficFine = '/traffic-fine';
@@ -148,6 +151,25 @@ class AppRouter {
         path: AppRoutes.maintenanceTips,
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const MaintenanceTipsPage()),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const ForgotPasswordPage()),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return VerifyEmailPage(data: data);
+        },
+      ),
+      GoRoute(
+        path: '/booking',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>?;
+          return _buildSlideTransition(context, state, BookingFlow(user: user));
+        },
       ),
     ],
   );

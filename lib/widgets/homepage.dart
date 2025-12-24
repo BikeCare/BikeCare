@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/app_bottom_nav.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -18,6 +19,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool _loadingExpense = true;
+  Map<String, int> _monthByCategory = {}; // category_name -> total amount
+  int _monthTotal = 0;
+
   List<Map<String, dynamic>> _vehicles = [];
   bool _loadingVehicles = true;
   late final String userId;
@@ -36,6 +41,9 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     userId = widget.user['user_id'].toString();
+    _loadingExpense = true;
+    _loadMonthlyExpense();
+
     _loadVehicles();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -158,19 +166,18 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _fakePieChart(),
+              _expensePieChart(),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _legendItem('Bảo dưỡng xe định kỳ', Colors.blue),
-                    _legendItem('Sửa chữa khẩn cấp', Colors.blueGrey),
-                    _legendItem('Nâng cấp & Tân trang', Colors.lightBlue),
-                    _legendItem('Phụ tùng mua ngoài', Colors.teal),
+                    _expenseLegend(), // ✅ CHỈ GỌI HÀM
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        context.go('/history', extra: widget.user);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF41ACD8),
                         foregroundColor: const Color(0xFFFBC71C),
@@ -193,19 +200,139 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _fakePieChart() {
-    return Container(
+  Widget _expenseLegend() {
+    if (_loadingExpense) {
+      return const Text('Đang tải dữ liệu...');
+    }
+
+    if (_monthByCategory.isEmpty) {
+      return const Text('Chưa có dữ liệu chi tiêu tháng này');
+    }
+
+    final entries = _monthByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    Color colorOf(String cat) {
+      switch (cat) {
+        case 'Bảo dưỡng định kỳ':
+          return Colors.blue;
+        case 'Sửa chữa khẩn cấp':
+          return Colors.blueGrey;
+        case 'Nâng cấp & tân trang':
+          return Colors.lightBlue;
+        case 'Phụ tùng':
+          return Colors.teal;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    String money(int v) =>
+        NumberFormat.currency(locale: 'vi_VN', symbol: '₫').format(v);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...entries
+            .take(4)
+            .map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 6, backgroundColor: colorOf(e.key)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(e.key)),
+                    Text(
+                      money(e.value),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        const SizedBox(height: 6),
+        Text(
+          'Tổng: ${money(_monthTotal)}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _expensePieChart() {
+    if (_loadingExpense) {
+      return const SizedBox(
+        width: 120,
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_monthTotal <= 0 || _monthByCategory.isEmpty) {
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFF7BAEC8),
+        ),
+        child: const Center(
+          child: Text(
+            'Chưa có\nchi tiêu',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    final entries = _monthByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final sections = <PieChartSectionData>[];
+
+    // Map màu cố định theo category (đúng 4 nhóm seed của bạn)
+    Color colorOf(String cat) {
+      switch (cat) {
+        case 'Bảo dưỡng định kỳ':
+          return Colors.blue;
+        case 'Sửa chữa khẩn cấp':
+          return Colors.blueGrey;
+        case 'Nâng cấp & tân trang':
+          return Colors.lightBlue;
+        case 'Phụ tùng':
+          return Colors.teal;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    for (final e in entries) {
+      final percent = (e.value / _monthTotal) * 100.0;
+      sections.add(
+        PieChartSectionData(
+          value: e.value.toDouble(),
+          color: colorOf(e.key),
+          title: percent >= 10 ? '${percent.toStringAsFixed(0)}%' : '',
+          radius: 50,
+          titleStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
       width: 120,
       height: 120,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Color(0xFF7BAEC8),
-      ),
-      child: const Center(
-        child: Text(
-          'Pie\nChart',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white),
+      child: PieChart(
+        PieChartData(
+          sections: sections,
+          centerSpaceRadius: 18,
+          sectionsSpace: 2,
         ),
       ),
     );
@@ -263,7 +390,7 @@ class _HomePageState extends State<HomePage> {
                             'images/calendar.png',
                             'Đặt lịch bảo dưỡng',
                             onTap: () {
-                              context.go('/dashboard', extra: widget.user);
+                              context.go('/booking', extra: widget.user);
                             },
                           ),
                         ),
@@ -578,5 +705,53 @@ class _HomePageState extends State<HomePage> {
   String getLastName(String fullName) {
     final parts = fullName.trim().split(RegExp(r'\s+'));
     return parts.isNotEmpty ? parts.last : fullName;
+  }
+
+  Future<void> _loadMonthlyExpense() async {
+    try {
+      final rows = await getUserExpenses(userId);
+
+      final now = DateTime.now();
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 1); // exclusive
+
+      final Map<String, int> agg = {};
+      int total = 0;
+
+      for (final r in rows) {
+        final dateStr = (r['expense_date'] ?? '').toString();
+        DateTime? d;
+        try {
+          d = DateTime.parse(
+            dateStr,
+          ); // bạn lưu ISO yyyy-MM-dd :contentReference[oaicite:2]{index=2}
+        } catch (_) {
+          continue;
+        }
+
+        if (d.isBefore(startOfMonth) || !d.isBefore(endOfMonth)) continue;
+
+        final cat = (r['category_name'] ?? 'Khác').toString();
+        final amount = (r['amount'] ?? 0) as int;
+
+        agg[cat] = (agg[cat] ?? 0) + amount;
+        total += amount;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _monthByCategory = agg;
+        _monthTotal = total;
+        _loadingExpense = false;
+      });
+    } catch (e) {
+      debugPrint('Load monthly expense error: $e');
+      if (!mounted) return;
+      setState(() {
+        _monthByCategory = {};
+        _monthTotal = 0;
+        _loadingExpense = false;
+      });
+    }
   }
 }

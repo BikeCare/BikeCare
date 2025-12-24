@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
-import '../../helpers/utils.dart';
-import 'booking models/booking_state.dart';
-import 'booking screens/step1_select_vehicle.dart';
-import 'booking screens/step2_select_time.dart';
-import 'booking screens/step3_select_service.dart';
-import 'booking screens/step4_confirm.dart';
-import 'booking screens/step5_success.dart';
+import 'package:bikecare/helpers/utils.dart';
+import 'booking_models/booking_state.dart';
+import 'booking_screens/step1_select_vehicle.dart';
+import 'booking_screens/step2_select_time.dart';
+import 'booking_screens/step3_select_service.dart';
+import 'booking_screens/step4_confirm.dart';
+import 'booking_screens/step5_success.dart';
+import 'package:go_router/go_router.dart';
 
 class BookingFlow extends StatefulWidget {
   final Map<String, dynamic>? user;
@@ -43,6 +44,20 @@ class _BookingFlowState extends State<BookingFlow> {
     });
   }
 
+  void handleBack() {
+    if (currentStep > 0) {
+      previousStep(); // về step trước
+    } else {
+      // đang Step1 -> về homepage
+      if (widget.user != null) {
+        context.go('/homepage', extra: widget.user);
+      } else {
+        // nếu lỡ thiếu user thì vẫn về được (tùy router bạn có bắt extra không)
+        context.go('/homepage');
+      }
+    }
+  }
+
   void resetFlow() {
     setState(() {
       currentStep = 0;
@@ -74,26 +89,27 @@ class _BookingFlowState extends State<BookingFlow> {
             return Step1SelectVehicle(
               booking: booking,
               onNext: nextStep,
+              onBack: handleBack,
               db: db,
             );
           case 1:
             return Step2SelectTime(
               booking: booking,
               onNext: nextStep,
-              onBack: previousStep,
+              onBack: handleBack,
             );
           case 2:
             return Step3SelectService(
               booking: booking,
               onNext: nextStep,
-              onBack: previousStep,
+              onBack: handleBack,
               db: db,
             );
           case 3:
             return Step4Confirm(
               booking: booking,
               onConfirm: nextStep,
-              onBack: previousStep,
+              onBack: handleBack,
               db: db,
             );
           default:

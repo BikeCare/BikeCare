@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../booking models/booking_state.dart';
-import '../booking widgets/custom_date_time_picker.dart';
-import '../booking widgets/booking_progress_header.dart';
+import '../booking_models/booking_state.dart';
+import '../booking_widgets/custom_date_time_picker.dart';
+import '../booking_widgets/booking_progress_header.dart';
 
 class Step2SelectTime extends StatefulWidget {
   final BookingState booking;

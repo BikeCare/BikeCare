@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
-import '../../helpers/utils.dart'; // import utils correct path
-import '../booking models/booking_state.dart';
-import '../booking widgets/booking_progress_header.dart';
+// import 'package:bikecare/helpers/utils.dart'; // import utils correct path
+import '../booking_models/booking_state.dart';
+import '../booking_widgets/booking_progress_header.dart';
+
+// Temporary getItems function
+Future<List<Map<String, dynamic>>> getItems(
+  Database db,
+  String tableName, {
+  String? orderBy,
+}) async {
+  try {
+    return await db.query(tableName, orderBy: orderBy);
+  } catch (e) {
+    debugPrint('Error in getItems($tableName): $e');
+    return <Map<String, dynamic>>[];
+  }
+}
 
 class Step3SelectService extends StatefulWidget {
   final BookingState booking;
@@ -175,7 +189,7 @@ class _Step3SelectServiceState extends State<Step3SelectService> {
                   ),
                   child: const Text(
                     'Kiểm tra thông tin',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                 ),
               ),
