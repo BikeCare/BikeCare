@@ -44,13 +44,184 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
   }
 
   Future<void> _load() async {
-    final userId = widget.user['user_id'].toString();
-    final data = await getUserExpenses(userId);
-    if (!mounted) return;
-    setState(() {
-      expenses = data;
-      loading = false;
-    });
+    try {
+      final userId = widget.user['user_id'].toString();
+      final data = await getUserExpenses(userId);
+      if (!mounted) return;
+      setState(() {
+        expenses = data;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading expenses: $e');
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
+    }
+  }
+
+  void _showActionMenu(BuildContext context, Map<String, dynamic> expense) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.edit, color: kCyanDeep),
+              title: const Text('Chỉnh sửa chi tiêu'),
+              onTap: () {
+                Navigator.pop(context);
+                _editExpense(expense);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: kCyanDeep),
+              title: const Text('Xoá chi tiêu'),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDelete(expense);
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editExpense(Map<String, dynamic> expense) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (_) => AddExpenseSheet(user: widget.user, expense: expense),
+    );
+    _load();
+  }
+
+  void _confirmDelete(Map<String, dynamic> expense) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFFF0FBFF), // Light blue background
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: kBorderSoft),
+                ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: kCyanDeep,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Xoá chi tiêu?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: kText,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Bạn có chắc chắn muốn xoá khoản chi tiêu này không? Hành động này không thể hoàn tác.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: kSubText, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: kBorderSoft),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Hủy',
+                        style: TextStyle(
+                          color: kSubText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final id = expense['expense_id'].toString();
+                        await deleteExpense(id);
+                        _load();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kCyanDeep,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Xoá',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // --------- helpers ----------
@@ -283,12 +454,48 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                               color: kText,
                             ),
                           ),
+                          const SizedBox(height: 12),
+
+                          // 5. Hint Discovery
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF9E7), // Soft yellow
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFFFECB3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.lightbulb_outline,
+                                  color: Color(0xFFFFA000),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Nhấn giữ vào chi tiêu để Chỉnh sửa hoặc Xoá',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF5D4037),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
 
-                  // 5. List Items (SliverList)
+                  // 6. List Items (SliverList)
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
                     sliver: SliverList(
@@ -362,6 +569,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                                     : '${_fmtDateLine(dt)} • $place',
                                 amountText: '-${_fmtMoney(amount)}',
                                 chipText: categoryName,
+                                onLongPress: () => _showActionMenu(context, e),
                               );
                             }),
                             const SizedBox(height: 8),
@@ -378,11 +586,8 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
           await showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            backgroundColor:
-                Colors.transparent, // ✅ bỏ nền mặc định (hay bị tím/hồng)
-            barrierColor: Colors.black.withOpacity(
-              0.45,
-            ), // ✅ nền đen mờ phía sau
+            backgroundColor: Colors.transparent,
+            barrierColor: Colors.black.withOpacity(0.45),
             builder: (_) => AddExpenseSheet(user: widget.user),
           );
           _load();
@@ -397,7 +602,6 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
     if (values.isEmpty) return 100000;
     final maxV = values.reduce((a, b) => a > b ? a : b);
     if (maxV <= 0) return 100000;
-    // làm tròn lên để chart nhìn đẹp
     final step = 50000;
     final rounded = ((maxV + step - 1) ~/ step) * step;
     return rounded.toDouble();
@@ -588,7 +792,6 @@ class _TrendChart extends StatelessWidget {
                   toY: bars[i].value.toDouble(),
                   width: 22,
                   borderRadius: BorderRadius.circular(2),
-                  // giống ảnh: cột cuối vàng
                   color: isLast
                       ? const Color(0xFFFBC71C)
                       : kCyanMain.withOpacity(0.5),
@@ -608,6 +811,7 @@ class _ExpenseRow extends StatelessWidget {
   final String subtitle;
   final String amountText;
   final String chipText;
+  final VoidCallback? onLongPress;
 
   const _ExpenseRow({
     required this.icon,
@@ -615,113 +819,117 @@ class _ExpenseRow extends StatelessWidget {
     required this.subtitle,
     required this.amountText,
     required this.chipText,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: kCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kBorderSoft, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon Box
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: kCyanMain.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: kCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: kBorderSoft, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Icon(icon, color: kCyanDeep, size: 22),
-          ),
-          const SizedBox(width: 14),
-
-          // Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w700,
-                          color: kText,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      amountText,
-                      style: const TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
-                        color: kText,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: kSubText,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    if (chipText.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: kCyanMain.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: kCyanMain.withOpacity(0.2)),
-                        ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: kCyanMain.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: kCyanDeep, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
                         child: Text(
-                          chipText,
+                          title,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 15.5,
                             fontWeight: FontWeight.w700,
-                            color: kCyanDeep,
+                            color: kText,
+                            height: 1.2,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Text(
+                        amountText,
+                        style: const TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: kText,
+                        ),
+                      ),
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: kSubText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (chipText.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: kCyanMain.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: kCyanMain.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Text(
+                            chipText,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: kCyanDeep,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -729,7 +937,8 @@ class _ExpenseRow extends StatelessWidget {
 
 class AddExpenseSheet extends StatefulWidget {
   final Map<String, dynamic> user;
-  const AddExpenseSheet({super.key, required this.user});
+  final Map<String, dynamic>? expense;
+  const AddExpenseSheet({super.key, required this.user, this.expense});
 
   @override
   State<AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -738,12 +947,16 @@ class AddExpenseSheet extends StatefulWidget {
 class _AddExpenseSheetState extends State<AddExpenseSheet> {
   final _amountCtl = TextEditingController();
   final _noteCtl = TextEditingController();
+  final _garageCtl = TextEditingController();
 
   List<Map<String, dynamic>> vehicles = [];
   List<Map<String, dynamic>> categories = [];
+  List<Map<String, dynamic>> allGarages = [];
 
   String? _vehicleId;
   int? _categoryId;
+  String? _selectedGarageId;
+  bool _isOtherGarage = false;
   DateTime _date = DateTime.now();
   bool _saving = false;
 
@@ -757,21 +970,58 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     final userId = widget.user['user_id'].toString();
     final v = await getUserVehicles(userId);
     final c = await getExpenseCategories();
+    final g = await getAllGarages();
+
     if (!mounted) return;
     setState(() {
       vehicles = v;
       categories = c;
-      _vehicleId = vehicles.isNotEmpty
-          ? vehicles.first['vehicle_id'].toString()
-          : null;
-      _categoryId = categories.isNotEmpty
-          ? categories.first['category_id'] as int
-          : null;
+      allGarages = g;
+
+      if (widget.expense != null) {
+        final exp = widget.expense!;
+        _amountCtl.text = exp['amount'].toString();
+        _noteCtl.text = exp['note'] ?? '';
+        _vehicleId = exp['vehicle_id']?.toString();
+        _categoryId = exp['category_id'] as int?;
+        _date = _parseDate(exp['expense_date']) ?? DateTime.now();
+
+        final savedGarage = exp['garage_name']?.toString() ?? '';
+        if (savedGarage.isNotEmpty) {
+          final match = allGarages.indexWhere(
+            (ga) => ga['name'] == savedGarage,
+          );
+          if (match != -1) {
+            _selectedGarageId = allGarages[match]['id'].toString();
+            _isOtherGarage = false;
+          } else {
+            _isOtherGarage = true;
+            _garageCtl.text = savedGarage;
+          }
+        }
+      } else {
+        _vehicleId = vehicles.isNotEmpty
+            ? vehicles.first['vehicle_id'].toString()
+            : null;
+        _categoryId = categories.isNotEmpty
+            ? categories.first['category_id'] as int
+            : null;
+      }
     });
   }
 
   String _toIso(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  DateTime? _parseDate(dynamic raw) {
+    if (raw == null) return null;
+    final s = raw.toString().trim();
+    try {
+      return DateTime.parse(s);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> _save() async {
     final amount = int.tryParse(_amountCtl.text.trim());
@@ -791,14 +1041,37 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
     setState(() => _saving = true);
     try {
-      await addExpense(
-        userId: widget.user['user_id'].toString(),
-        vehicleId: _vehicleId!,
-        amount: amount,
-        expenseDateIso: _toIso(_date),
-        categoryId: _categoryId!,
-        note: _noteCtl.text.trim(),
-      );
+      String finalGarageName = "";
+      if (_isOtherGarage) {
+        finalGarageName = _garageCtl.text.trim();
+      } else if (_selectedGarageId != null) {
+        final garage = allGarages.firstWhere(
+          (g) => g['id'] == _selectedGarageId,
+        );
+        finalGarageName = garage['name'] ?? "";
+      }
+
+      if (widget.expense != null) {
+        await updateExpense(
+          expenseId: widget.expense!['expense_id'].toString(),
+          amount: amount,
+          expenseDateIso: _toIso(_date),
+          categoryId: _categoryId!,
+          garageName: finalGarageName,
+          note: _noteCtl.text.trim(),
+          vehicleId: _vehicleId,
+        );
+      } else {
+        await addExpense(
+          userId: widget.user['user_id'].toString(),
+          vehicleId: _vehicleId!,
+          amount: amount,
+          expenseDateIso: _toIso(_date),
+          categoryId: _categoryId!,
+          garageName: finalGarageName,
+          note: _noteCtl.text.trim(),
+        );
+      }
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -809,18 +1082,17 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   void dispose() {
     _amountCtl.dispose();
     _noteCtl.dispose();
+    _garageCtl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-
-    const primary = Color(0xFF59CBEF); // kCyanMain
+    const primary = Color(0xFF59CBEF);
     const border = Color(0xFFBFE3F7);
     const textSoft = Color(0xFF6B7280);
     const sheetBg = Color(0xFFF7FBFE);
-    const Color kYellowAccent = Color(0xFFFBC71C);
 
     InputDecoration deco(String label) {
       return InputDecoration(
@@ -835,6 +1107,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           horizontal: 14,
           vertical: 12,
         ),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: border),
@@ -847,7 +1120,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     }
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(12, 0, 12, bottom + 12),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Container(
         decoration: BoxDecoration(
           color: sheetBg,
@@ -861,182 +1134,260 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
               primary: primary,
               surfaceTint: Colors.white,
             ),
-            splashColor: primary.withOpacity(0.1),
-            highlightColor: primary.withOpacity(0.05),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // thanh kéo
-              Container(
-                width: 46,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD6EAF6),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              const Text(
-                'Thêm chi tiêu',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 14),
-
-              TextField(
-                controller: _noteCtl,
-                decoration: deco('Sửa chữa').copyWith(
-                  floatingLabelBehavior: FloatingLabelBehavior.always,
-                  hintText: 'Ví dụ: Thay nhớt, vá lốp...',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFF9CA3AF), // Grey 400
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 46,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6EAF6),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  suffixIcon: const Icon(Icons.edit, color: Color(0xFF6B7280)),
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              DropdownButtonFormField<String>(
-                initialValue: _vehicleId,
-                items: vehicles
-                    .map(
-                      (v) => DropdownMenuItem(
-                        value: v['vehicle_id'].toString(),
-                        child: Text(
-                          getVehicleDisplayName(v),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _vehicleId = v),
-                decoration: deco('Chọn xe'),
-                icon: const Icon(Icons.expand_more),
-                dropdownColor: Colors.white,
-              ),
-
-              const SizedBox(height: 12),
-
-              DropdownButtonFormField<int>(
-                initialValue: _categoryId,
-                items: categories
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c['category_id'] as int,
-                        child: Text(
-                          c['category_name'].toString(),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _categoryId = v),
-                decoration: deco('Nhóm chi tiêu'),
-                icon: const Icon(Icons.expand_more),
-                dropdownColor: Colors.white,
-              ),
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: _amountCtl,
-                keyboardType: TextInputType.number,
-                decoration: deco('Số tiền'),
-              ),
-              const SizedBox(height: 12),
-
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: border),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Ngày: ${_toIso(_date)}',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 36,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: primary),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2035),
-                            initialDate: _date,
-                            builder: (context, child) {
-                              return Theme(
-                                data: Theme.of(context).copyWith(
-                                  colorScheme: const ColorScheme.light(
-                                    primary: primary,
-                                  ),
-                                ),
-                                child: child!,
-                              );
-                            },
-                          );
-                          if (picked != null) setState(() => _date = picked);
-                        },
-                        child: const Text(
-                          'Chọn',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: Color.fromARGB(255, 0, 0, 0),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primary,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 0,
+                const SizedBox(height: 10),
+                Text(
+                  widget.expense != null
+                      ? 'Cập nhật chi tiêu'
+                      : 'Thêm chi tiêu',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
                   ),
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text(
-                          'Lưu',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _noteCtl,
+                  decoration: deco('Sửa chữa').copyWith(
+                    hintText: 'Ví dụ: Thay nhớt, vá lốp...',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontWeight: FontWeight.w400,
+                      fontSize: 14,
+                    ),
+                    suffixIcon: const Icon(
+                      Icons.edit,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (!_isOtherGarage)
+                  DropdownButtonFormField<String>(
+                    value: _selectedGarageId,
+                    hint: const Text(
+                      'Chọn cửa hàng từ danh sách...',
+                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                    ),
+                    items: [
+                      ...allGarages.map(
+                        (g) => DropdownMenuItem(
+                          value: g['id'].toString(),
+                          child: Text(
+                            g['name'].toString(),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
+                      ),
+                      const DropdownMenuItem(
+                        value: "OTHER",
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.add_circle_outline,
+                              size: 18,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "Khác (Tự nhập tên...)",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() {
+                      if (v == "OTHER") {
+                        _isOtherGarage = true;
+                        _selectedGarageId = null;
+                      } else {
+                        _selectedGarageId = v;
+                        _isOtherGarage = false;
+                      }
+                    }),
+                    decoration: deco('Địa điểm / Gara').copyWith(
+                      prefixIcon: const Icon(
+                        Icons.store,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                    icon: const Icon(Icons.expand_more),
+                    dropdownColor: Colors.white,
+                    isExpanded: true,
+                  )
+                else
+                  TextField(
+                    controller: _garageCtl,
+                    autofocus: true,
+                    decoration: deco('Địa điểm / Gara').copyWith(
+                      prefixIcon: const Icon(
+                        Icons.store,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      hintText: 'Nhập tên cửa hàng...',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => setState(() {
+                          _isOtherGarage = false;
+                          _selectedGarageId = null;
+                          _garageCtl.clear();
+                        }),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _vehicleId,
+                  items: vehicles
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v['vehicle_id'].toString(),
+                          child: Text(
+                            getVehicleDisplayName(v),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _vehicleId = v),
+                  decoration: deco('Chọn xe'),
+                  icon: const Icon(Icons.expand_more),
+                  dropdownColor: Colors.white,
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: _categoryId,
+                  items: categories
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c['category_id'] as int,
+                          child: Text(
+                            c['category_name'].toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _categoryId = v),
+                  decoration: deco('Nhóm chi tiêu'),
+                  icon: const Icon(Icons.expand_more),
+                  dropdownColor: Colors.white,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _amountCtl,
+                  keyboardType: TextInputType.number,
+                  decoration: deco('Số tiền').copyWith(
+                    prefixIcon: const Icon(
+                      Icons.payments,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                    hintText: 'Nhập số tiền chi tiêu...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Ngày: ${_toIso(_date)}',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 36,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: primary),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                              initialDate: _date,
+                            );
+                            if (picked != null) setState(() => _date = picked);
+                          },
+                          child: const Text(
+                            'Chọn',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Lưu',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+                SizedBox(height: bottom + 8),
+              ],
+            ),
           ),
         ),
       ),

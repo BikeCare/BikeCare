@@ -1,22 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'add_vehicle_page.dart';
 import '../../helpers/utils.dart'; // Để lấy list xe từ DB
+import 'package:intl/intl.dart';
 
 class GaragePage extends StatefulWidget {
-  const GaragePage({super.key});
+  final Map<String, dynamic> user; // KHÔI PHỤC USER
+  final Function(int)? onSwitchTab; // Thêm callback để chuyển tab
+  const GaragePage({super.key, required this.user, this.onSwitchTab});
 
   @override
-  State<GaragePage> createState() => _GaragePageState();
+  State<GaragePage> createState() => GaragePageState();
 }
 
-class _GaragePageState extends State<GaragePage> {
+class GaragePageState extends State<GaragePage> {
+  // CHO PHÉP TRUY CẬP ĐỂ RELOAD
+  void refresh() {
+    _loadVehicles();
+  }
+
   // PageController để tạo hiệu ứng vuốt thẻ
   final PageController _pageController = PageController(viewportFraction: 0.9);
 
   int _selectedIndex = 0; // Card đang được chọn
   List<Map<String, dynamic>> _vehicles = [];
   bool _isLoading = true;
-  final String _userId = "user_001"; // ID giả định
+  List<Map<String, dynamic>> _recentRepairs = [];
+  bool _loadingRepairs = true;
+
+  final _money = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+
+  String _fmtMoney(int v) => _money.format(v).replaceAll('₫', 'đ');
+
+  String _fmtDate(String iso) {
+    try {
+      final d = DateTime.parse(iso);
+      return DateFormat('d/M/yyyy', 'vi_VN').format(d);
+    } catch (_) {
+      return iso;
+    }
+  }
 
   @override
   void initState() {
@@ -25,12 +48,44 @@ class _GaragePageState extends State<GaragePage> {
   }
 
   Future<void> _loadVehicles() async {
-    // Lấy danh sách xe từ DB thật
-    final data = await getUserVehicles(_userId);
+    final userId = widget.user['user_id'].toString();
+    final data = await getUserVehicles(userId);
     if (mounted) {
       setState(() {
         _vehicles = data;
         _isLoading = false;
+      });
+      await _loadRecentRepairs();
+    }
+  }
+
+  Future<void> _loadRecentRepairs() async {
+    // Nếu chưa có xe hoặc đang ở thẻ cuối "Thêm xe"
+    if (_vehicles.isEmpty || _selectedIndex >= _vehicles.length) {
+      if (!mounted) return;
+      setState(() {
+        _recentRepairs = [];
+        _loadingRepairs = false;
+      });
+      return;
+    }
+
+    final vehicleId = _vehicles[_selectedIndex]['vehicle_id'].toString();
+    final userId = widget.user['user_id'].toString();
+
+    if (!mounted) return;
+    setState(() => _loadingRepairs = true);
+
+    final data = await getRecentRepairsByVehicle(
+      userId: userId,
+      vehicleId: vehicleId,
+      limit: 2,
+    );
+
+    if (mounted) {
+      setState(() {
+        _recentRepairs = data;
+        _loadingRepairs = false;
       });
     }
   }
@@ -67,8 +122,9 @@ class _GaragePageState extends State<GaragePage> {
                     controller: _pageController,
                     // Số lượng item = số xe + 1 (thẻ Add cuối cùng)
                     itemCount: _vehicles.length + 1,
-                    onPageChanged: (index) {
+                    onPageChanged: (index) async {
                       setState(() => _selectedIndex = index);
+                      await _loadRecentRepairs();
                     },
                     itemBuilder: (context, index) {
                       // Nếu là thẻ cuối cùng -> Hiển thị Card Thêm Xe
@@ -286,6 +342,7 @@ class _GaragePageState extends State<GaragePage> {
             ),
           ],
         ),
+
         const SizedBox(height: 10),
 
         // Mock Data Card
@@ -329,33 +386,68 @@ class _GaragePageState extends State<GaragePage> {
         const SizedBox(height: 20),
 
         // --- 2. Sửa chữa gần đây ---
-        Row(
-          children: [
-            const Icon(Icons.build_outlined),
-            const SizedBox(width: 8),
-            const Text(
-              "Sửa chữa gần đây",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Spacer(),
-            const Icon(Icons.arrow_forward, color: Colors.grey),
-          ],
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            if (widget.onSwitchTab != null) {
+              widget.onSwitchTab!(3); // Chuyển sang tab Lịch sử
+            } else {
+              context.push('/history', extra: widget.user);
+            }
+          },
+          child: Row(
+            children: [
+              const Icon(Icons.build_outlined),
+              const SizedBox(width: 8),
+              const Text(
+                "Sửa chữa gần đây",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              const Icon(Icons.arrow_forward, color: Colors.grey),
+            ],
+          ),
         ),
         const SizedBox(height: 10),
 
-        // List Mock Data
-        _buildRepairItem(
-          "Thay bố thắng",
-          "Thanh Vinh Honda",
-          "21/10/2025",
-          "-300.000đ",
-        ),
-        _buildRepairItem(
-          "Thay đèn xe",
-          "Minh Thắng Gara",
-          "16/10/2025",
-          "-400.000đ",
-        ),
+        if (_loadingRepairs)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_recentRepairs.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Text(
+                "Chưa có lịch sử sửa chữa cho xe này.",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          )
+        else
+          ..._recentRepairs.map((e) {
+            final title = (e['note']?.toString().trim().isNotEmpty ?? false)
+                ? e['note'].toString()
+                : (e['category_name']?.toString() ?? 'Sửa chữa');
+
+            final garageName =
+                (e['garage_name']?.toString().trim().isNotEmpty ?? false)
+                ? e['garage_name'].toString()
+                : "Không rõ gara";
+
+            final date = _fmtDate(e['expense_date'].toString());
+            final amount = (e['amount'] ?? 0) is int
+                ? (e['amount'] as int)
+                : int.tryParse(e['amount'].toString()) ?? 0;
+
+            final price = "-${_fmtMoney(amount)}";
+
+            return _buildRepairItem(title, garageName, date, price);
+          }),
       ],
     );
   }
@@ -371,26 +463,41 @@ class _GaragePageState extends State<GaragePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text(shop, style: const TextStyle(color: Colors.black87)),
-              Text(
-                date,
-                style: const TextStyle(color: Colors.blue, fontSize: 12),
-              ),
-            ],
+                if (shop.isNotEmpty)
+                  Text(
+                    shop,
+                    style: const TextStyle(color: Colors.black54, fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                Text(
+                  date,
+                  style: const TextStyle(color: Colors.blue, fontSize: 12),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 10),
           Text(
             price,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: Color.fromARGB(255, 9, 9, 9),
+            ),
           ),
         ],
       ),

@@ -37,24 +37,17 @@ class _GarageListPageState extends State<GarageListPage> {
       if (mounted) {
         setState(() {
           _garages = data;
+          _isLoading = false;
         });
       }
     } catch (e) {
       // FALLBACK: Nếu lỗi GPS thì dùng toạ độ mặc định Quận 10
-      debugPrint("Lỗi GPS/Data: $e -> Dùng toạ độ mặc định Quận 10");
-      try {
-        final data = await getNearestGarages(10.771450, 106.666980);
-        if (mounted) {
-          setState(() {
-            _garages = data;
-          });
-        }
-      } catch (e2) {
-        debugPrint("Lỗi Fatal khi load data fallback: $e2");
-      }
-    } finally {
+      print("Lỗi GPS: $e -> Dùng toạ độ mặc định Quận 10");
+      final data = await getNearestGarages(10.771450, 106.666980);
+
       if (mounted) {
         setState(() {
+          _garages = data;
           _isLoading = false;
         });
       }

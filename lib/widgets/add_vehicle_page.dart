@@ -33,11 +33,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) {
+        if (isStart)
           _warrantyStart = picked;
-        } else {
+        else
           _warrantyEnd = picked;
-        }
       });
     }
   }
@@ -53,8 +52,12 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         // --- THÊM CÁC DÒNG NÀY ---
         name: _nameController.text,
         licensePlate: _plateController.text,
-        warrantyStart: _warrantyStart?.toIso8601String(),
-        warrantyEnd: _warrantyEnd?.toIso8601String(),
+        warrantyStart: _warrantyStart != null
+            ? _warrantyStart!.toIso8601String()
+            : null,
+        warrantyEnd: _warrantyEnd != null
+            ? _warrantyEnd!.toIso8601String()
+            : null,
       );
 
       if (mounted) {

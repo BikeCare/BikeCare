@@ -17,21 +17,21 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late final List<Widget> _pages;
+  final GlobalKey<GaragePageState> _garageKey = GlobalKey(); // KHÔI PHỤC KEY
 
   @override
   void initState() {
     super.initState();
     _pages = [
-      // Tab 0: Trang chủ
       HomePage(
         user: widget.user,
-        onSwitchTab: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onSwitchTab: (index) => setState(() => _currentIndex = index),
       ),
-      const GaragePage(),
+      GaragePage(
+        key: _garageKey,
+        user: widget.user,
+        onSwitchTab: (index) => setState(() => _currentIndex = index),
+      ), // KHÔI PHỤC TRUYỀN USER
       const GarageListPage(), // Tab 2: Tìm kiếm
       HistoryExpensesPage(user: widget.user), // Tab 3
       UserProfilePage(user: widget.user), // Tab 4
@@ -49,7 +49,15 @@ class _MainScreenState extends State<MainScreen> {
         selectedItemColor: const Color(0xFF92D6E3),
         unselectedItemColor: Colors.white,
         showUnselectedLabels: true,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          if (index == 1 && _currentIndex == 1) {
+            _garageKey.currentState?.refresh();
+          }
+          setState(() => _currentIndex = index);
+          if (index == 1) {
+            _garageKey.currentState?.refresh();
+          }
+        },
         items: [
           _bottomItem('images/home.png', 'Trang chủ'),
           _bottomItem('images/gara.png', 'Garage'),

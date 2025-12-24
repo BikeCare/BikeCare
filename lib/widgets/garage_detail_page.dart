@@ -251,11 +251,10 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
       return;
     }
     try {
-      if (await canLaunchUrl(googleUrl)) {
+      if (await canLaunchUrl(googleUrl))
         await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
-      } else {
+      else
         await launchUrl(googleUrl);
-      }
     } catch (e) {
       print(e);
     }

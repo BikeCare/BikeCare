@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 
-// import '../widgets/maintenance_page/maintenance_tip_seed.dart';
+import '../widgets/maintenance_page/maintenance_tip_seed.dart';
 
 // Test comment to refresh analyzer
 
@@ -43,9 +43,18 @@ Future<Database> initializeDatabase() async {
 
   final db = await openDatabase(
     path,
-    version: 3,
+    version: 4,
     onConfigure: (db) async {
       await db.execute('PRAGMA foreign_keys = ON');
+    },
+    onOpen: (db) async {
+      // Check if maintenance_tips is empty and seed it if needed
+      final count = Sqflite.firstIntValue(
+        await db.rawQuery('SELECT COUNT(*) FROM maintenance_tips'),
+      );
+      if (count == 0) {
+        await _seedMaintenanceTips(db);
+      }
     },
     onCreate: (db, version) async {
       // =================1.USERS =================
@@ -115,17 +124,20 @@ Future<Database> initializeDatabase() async {
         )
       ''');
       // Nạp dữ liệu mẫu
-      await _seedGarages(db);
-      await _seedReviews(db);
-      await _seedUser(db);
+      if (kDebugMode) {
+        await _seedGarages(db);
+        await _seedReviews(db);
+        await _seedUser(db);
+        await _seedMaintenanceTips(db);
+      }
 
       // ================= 6. MAINTENANCE TIPS =================
       await db.execute('''
         CREATE TABLE maintenance_tips (
-          tip_id INTEGER PRIMARY KEY AUTOINCREMENT,
-          tip_title TEXT NOT NULL,
-          tip_summary TEXT NOT NULL,
-          tip_content TEXT NOT NULL
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          content TEXT NOT NULL
         )
       ''');
 
@@ -178,6 +190,7 @@ Future<Database> initializeDatabase() async {
           amount INTEGER NOT NULL,         -- lưu số dương
           expense_date TEXT NOT NULL,      -- ISO yyyy-MM-dd
           category_id INTEGER NOT NULL,
+          garage_name TEXT,                -- THÊM CỘT NÀY
           note TEXT,
 
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -232,6 +245,19 @@ Future<Database> initializeDatabase() async {
         // Seed dữ liệu mẫu cho bản mới
         await _seedReviews(db);
       }
+      if (oldVersion < 4) {
+        // Upgrade to 4: Recreate maintenance_tips with correct schema for UI
+        await db.execute('DROP TABLE IF EXISTS maintenance_tips');
+        await db.execute('''
+          CREATE TABLE maintenance_tips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            content TEXT NOT NULL
+          )
+        ''');
+        await _seedMaintenanceTips(db);
+      }
     },
   );
 
@@ -240,34 +266,9 @@ Future<Database> initializeDatabase() async {
   await seedExpenseCategoriesIfEmpty(db);
 
   // FIX LỖI: Kiểm tra lại xem bảng reviews có thật sự tồn tại chưa (phòng trường hợp migration lỗi)
-  try {
-    await db.query('reviews', limit: 1);
-  } catch (e) {
-    // Nếu lỗi (table not found) -> Tạo lại ngay lập tức
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS reviews (
-            id TEXT PRIMARY KEY,
-            garage_id TEXT NOT NULL,
-            user_name TEXT,
-            rating INTEGER,
-            comment TEXT,
-            created_at TEXT
-      )
-    ''');
-    await _seedReviews(db);
-  }
 
-  try {
-    await db.query('favorites', limit: 1);
-  } catch (e) {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS favorites (
-            user_id TEXT,
-            garage_id TEXT,
-            PRIMARY KEY (user_id, garage_id)
-      )
-    ''');
-  }
+  await _seedReviews(db);
+
   // 🔥 QUAN TRỌNG: Kiểm tra và sửa cấu trúc bảng vehicles (Self-healing)
   try {
     // Kiểm tra xem cột 'license_plate' có tồn tại chưa
@@ -289,8 +290,84 @@ Future<Database> initializeDatabase() async {
   } catch (e) {
     debugPrint('⚠️ Error migrating vehicles table: $e');
   }
-
+  await ensureDatabaseHealthy(db);
   return db;
+}
+// =========================================================
+// DB SELF-HEALING (NO RESET NEEDED)
+// =========================================================
+
+Future<void> addColumnIfMissing(
+  Database db,
+  String table,
+  String column,
+  String columnDef,
+) async {
+  final cols = await db.rawQuery('PRAGMA table_info($table)');
+  final exists = cols.any((c) => c['name'] == column);
+  if (!exists) {
+    debugPrint('➕ Adding column $column to $table');
+    await db.execute('ALTER TABLE $table ADD COLUMN $column $columnDef');
+  }
+}
+
+Future<void> ensureDatabaseHealthy(Database db) async {
+  // 1) đảm bảo các bảng “hay bị thiếu” vẫn tồn tại (DB cũ / migrate fail)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS favorites (
+      user_id TEXT,
+      garage_id TEXT,
+      PRIMARY KEY (user_id, garage_id)
+    )
+  ''');
+
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      garage_id TEXT NOT NULL,
+      user_name TEXT,
+      rating REAL,
+      comment TEXT,
+      created_at TEXT
+    )
+  ''');
+
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS expense_categories (
+      category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_name TEXT NOT NULL UNIQUE
+    )
+  ''');
+
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS maintenance_tips (
+      tip_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tip_title TEXT NOT NULL,
+      tip_summary TEXT NOT NULL,
+      tip_content TEXT NOT NULL
+    )
+  ''');
+
+  // 2) tự bổ sung cột thiếu (chỉ ADD COLUMN, không phá data)
+  // garages (đảm bảo các cột UI hay dùng tồn tại)
+  await addColumnIfMissing(db, 'garages', 'images', 'TEXT');
+  await addColumnIfMissing(db, 'garages', 'image', 'TEXT');
+  await addColumnIfMissing(db, 'garages', 'rating', 'REAL');
+  await addColumnIfMissing(db, 'garages', 'review_count', 'INTEGER');
+  await addColumnIfMissing(db, 'garages', 'lat', 'REAL');
+  await addColumnIfMissing(db, 'garages', 'lng', 'REAL');
+  await addColumnIfMissing(db, 'garages', 'phone', 'TEXT');
+
+  // vehicles (bạn đã có self-healing rồi, nhưng giữ thêm cho đồng bộ)
+  await addColumnIfMissing(db, 'vehicles', 'vehicle_name', 'TEXT');
+  await addColumnIfMissing(db, 'vehicles', 'license_plate', 'TEXT');
+  await addColumnIfMissing(db, 'vehicles', 'warranty_start', 'TEXT');
+  await addColumnIfMissing(db, 'vehicles', 'warranty_end', 'TEXT');
+
+  // expenses
+  await addColumnIfMissing(db, 'expenses', 'garage_name', 'TEXT');
+
+  // 3) seed “an toàn” (chỉ seed khi trống) — bạn đã có 2 hàm này
 }
 
 Future<void> seedExpenseCategoriesIfEmpty(Database db) async {
@@ -620,6 +697,7 @@ Future<void> addExpense({
   required String expenseDateIso, // yyyy-MM-dd
   required int categoryId,
   String? bookingId,
+  String? garageName, // KHÔI PHỤC TRƯỜNG NÀY
   String? note,
 }) async {
   final db = await initializeDatabase();
@@ -633,8 +711,71 @@ Future<void> addExpense({
     'amount': amount,
     'expense_date': expenseDateIso,
     'category_id': categoryId,
+    'garage_name': garageName ?? '', // KHÔI PHỤC TRƯỜNG NÀY
     'note': note ?? '',
   });
+}
+
+Future<void> updateExpense({
+  required String expenseId,
+  required int amount,
+  required String expenseDateIso,
+  required int categoryId,
+  String? garageName,
+  String? note,
+  String? vehicleId,
+}) async {
+  final db = await initializeDatabase();
+  final Map<String, dynamic> data = {
+    'amount': amount,
+    'expense_date': expenseDateIso,
+    'category_id': categoryId,
+    'garage_name': garageName ?? '',
+    'note': note ?? '',
+  };
+  if (vehicleId != null) data['vehicle_id'] = vehicleId;
+
+  await db.update(
+    'expenses',
+    data,
+    where: 'expense_id = ?',
+    whereArgs: [expenseId],
+  );
+}
+
+Future<void> deleteExpense(String expenseId) async {
+  final db = await initializeDatabase();
+  await db.delete('expenses', where: 'expense_id = ?', whereArgs: [expenseId]);
+}
+
+Future<List<Map<String, dynamic>>> getRecentRepairsByVehicle({
+  required String userId,
+  required String vehicleId,
+  int limit = 2,
+}) async {
+  final db = await initializeDatabase();
+
+  return db.rawQuery(
+    '''
+    SELECT 
+      e.expense_id,
+      e.amount,
+      e.expense_date,
+      e.note,
+      e.garage_name,
+      e.vehicle_id,
+      e.category_id,
+      c.category_name
+    FROM expenses e
+    JOIN expense_categories c ON c.category_id = e.category_id
+    WHERE e.user_id = ?
+      AND e.vehicle_id = ?
+      AND (e.category_id IN (1, 2) OR c.category_name LIKE '%bảo dưỡng%' OR c.category_name LIKE '%sửa chữa%')
+    ORDER BY e.expense_date DESC
+    LIMIT ?
+    ''',
+    [userId, vehicleId, limit],
+  );
 }
 
 Future<List<Map<String, dynamic>>> getUserExpenses(String userId) async {
@@ -647,7 +788,9 @@ Future<List<Map<String, dynamic>>> getUserExpenses(String userId) async {
       e.amount,
       e.expense_date,
       e.note,
+      e.garage_name,
       e.vehicle_id,
+      e.category_id,
       c.category_name
     FROM expenses e
     JOIN expense_categories c ON c.category_id = e.category_id
@@ -790,6 +933,16 @@ Future<void> _seedGarages(Database db) async {
       garage,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+}
+
+Future<void> _seedMaintenanceTips(Database db) async {
+  for (var tip in maintenanceTipsSeed) {
+    await db.insert('maintenance_tips', {
+      'title': tip['tip_title'],
+      'summary': tip['tip_summary'],
+      'content': tip['tip_content'],
+    });
   }
 }
 
@@ -1063,4 +1216,16 @@ Future<void> _seedUser(Database db) async {
         .add(const Duration(days: 365))
         .toIso8601String(),
   });
+}
+
+// =========================================================
+// GET ALL GARAGES (FOR SELECTION)
+// =========================================================
+Future<List<Map<String, dynamic>>> getAllGarages() async {
+  final db = await initializeDatabase();
+  return db.query(
+    'garages',
+    columns: ['id', 'name', 'address'],
+    orderBy: 'name ASC',
+  );
 }
