@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,25 +15,13 @@ class VerifyEmailPage extends StatefulWidget {
 }
 
 class _VerifyEmailPageState extends State<VerifyEmailPage> {
-  Timer? _timer;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _startChecking();
-  }
-
-  void _startChecking() {
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      await FirebaseAuth.instance.currentUser?.reload();
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user != null && user.emailVerified) {
-        timer.cancel();
-        _saveToLocalDatabase();
-      }
-    });
+    // Bỏ xác thực qua Firebase — lưu trực tiếp vào local DB
+    Future.microtask(_saveToLocalDatabase);
   }
 
   Future<void> _saveToLocalDatabase() async {
@@ -53,12 +40,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
 
     setState(() => _isLoading = false);
     context.go('/register-success');
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 
   @override

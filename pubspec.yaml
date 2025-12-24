@@ -1,4 +1,4 @@
-name: flutter_application_1
+name: bikecare
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -44,12 +44,11 @@ dependencies:
   geolocator: ^14.0.2
   geocoding: ^4.0.0
   intl: ^0.20.2
-  url_launcher: ^6.2.6
-  firebase_core: ^3.0.0
-  firebase_auth: ^5.0.0
-  google_maps_flutter: ^2.5.0
-  photo_view: ^0.15.0
-
+  url_launcher: ^6.3.2
+  http: ^1.2.2
+  shared_preferences: ^2.2.2
+  fl_chart: ^0.70.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +60,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -83,7 +83,6 @@ flutter:
     - images/garage.png
     - images/search.png
     - images/tips.png
-    - images/email_verify.png
 
     - images/history.png
     - images/home.png
@@ -96,28 +95,6 @@ flutter:
 
     - images/map.png
     - images/rectangle.png
-    
-    - images/store_hau1.png
-    - images/store_hau2.png
-    - images/store_hau3.png
-    - images/store_hoangphuong1.png
-    - images/store_hoangphuong2.png
-    - images/store_hoangphuong3.png
-    - images/store_giahung1.png
-    - images/store_giahung2.png
-    - images/store_giahung3.png
-    - images/store_minhthanh1.png
-    - images/store_minhthanh2.png
-    - images/store_minhthanh3.png
-    - images/store_thuong1.png
-    - images/store_thuong2.png
-    - images/store_thuong3.png
-    - images/store_thuc1.png
-    - images/store_thuc2.png
-    - images/store_thuc3.png
-    - images/store1.png
-    - images/store2_minhtuan.png
-
 
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

@@ -2,22 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // Import các trang
-
 import '../widgets/login_page.dart';
-import '../widgets/forgot_password.dart';
 import '../widgets/register_page.dart';
 import '../widgets/register_success_page.dart';
 import '../widgets/welcome_2.dart';
 import '../widgets/welcome_1.dart';
-import '../widgets/main_screen.dart';
-import '../widgets/homepage.dart';
+import '../widgets/services/traffic_fine_page.dart';
+import '../widgets/maintenance_page/maintenance_tips_page.dart';
+import '../widgets/profile_page.dart';
+import '../widgets/history_expenses_page.dart';
+import '../widgets/forgot_password.dart';
 import '../widgets/verify_email_page.dart';
-import '../widgets/garage_list_page.dart';
+import '../widgets/booking/booking_flow.dart';
+import '../widgets/main_screen.dart';
 import '../widgets/garage_detail_page.dart';
+import '../widgets/garage_list_page.dart';
 import '../widgets/favorite_page.dart';
 import '../widgets/add_vehicle_page.dart';
 
-
+class AppRoutes {
+  static const trafficFine = '/traffic-fine';
+  static const maintenanceTips = '/maintenance-tips';
+  static const profile = '/profile';
+}
 
 class AppRouter {
   // Định nghĩa hiệu ứng chuyển trang (slide từ phải sang)
@@ -53,11 +60,6 @@ class AppRouter {
             _buildSlideTransition(context, state, const LoginPage()),
       ),
       GoRoute(
-        path: '/forgot-password',
-        pageBuilder: (context, state) =>
-            _buildSlideTransition(context, state, const ForgotPasswordPage()),
-      ),
-      GoRoute(
         path: '/homepage',
         pageBuilder: (context, state) {
           final user = state.extra as Map<String, dynamic>;
@@ -65,7 +67,42 @@ class AppRouter {
           return _buildSlideTransition(context, state, MainScreen(user: user));
         },
       ),
-
+      GoRoute(
+        path: '/profile',
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          if (extra == null || extra is! Map<String, dynamic>) {
+            return _buildSlideTransition(
+              context,
+              state,
+              const Scaffold(body: Center(child: Text('Thiếu dữ liệu user'))),
+            );
+          }
+          return _buildSlideTransition(
+            context,
+            state,
+            UserProfilePage(user: extra),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/history',
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          if (extra == null || extra is! Map<String, dynamic>) {
+            return _buildSlideTransition(
+              context,
+              state,
+              const Scaffold(body: Center(child: Text('Thiếu dữ liệu user'))),
+            );
+          }
+          return _buildSlideTransition(
+            context,
+            state,
+            HistoryExpensesPage(user: extra),
+          );
+        },
+      ),
       GoRoute(
         path: '/register-success',
         pageBuilder: (context, state) =>
@@ -77,13 +114,6 @@ class AppRouter {
             _buildSlideTransition(context, state, const RegisterPage()),
       ),
       GoRoute(
-        path: '/verify-email',
-        builder: (context, state) {
-          final data = state.extra as Map<String, dynamic>;
-          return VerifyEmailPage(data: data);
-        },
-      ),
-      GoRoute(
         path: '/welcome-2',
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const WelcomePage2()),
@@ -92,6 +122,58 @@ class AppRouter {
         path: '/welcome-1',
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const WelcomePage1()),
+      ),
+      // Các router mới cho trang phạt nguội và mẹo bảo dưỡng
+      GoRoute(
+        path: AppRoutes.trafficFine,
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+
+          if (extra == null || extra is! Map<String, dynamic>) {
+            return _buildSlideTransition(
+              context,
+              state,
+              const Scaffold(
+                body: Center(
+                  child: Text(
+                    'Thiếu dữ liệu user. Hãy truyền extra khi điều hướng.',
+                  ),
+                ),
+              ),
+            );
+          }
+          final user = extra;
+          return _buildSlideTransition(
+            context,
+            state,
+            TrafficFinePage(user: user),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.maintenanceTips,
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const MaintenanceTipsPage()),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const ForgotPasswordPage()),
+      ),
+      GoRoute(
+        path: '/verify-email',
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return VerifyEmailPage(data: data);
+        },
+      ),
+      GoRoute(
+        path: '/booking',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>?;
+          return _buildSlideTransition(context, state, BookingFlow(user: user));
+        },
       ),
       GoRoute(
         path: '/garage/list',
@@ -102,7 +184,11 @@ class AppRouter {
         path: '/garage/detail',
         pageBuilder: (context, state) {
           final garage = state.extra as Map<String, dynamic>;
-          return _buildSlideTransition(context, state, GarageDetailPage(garage: garage));
+          return _buildSlideTransition(
+            context,
+            state,
+            GarageDetailPage(garage: garage),
+          );
         },
       ),
       GoRoute(
@@ -117,5 +203,4 @@ class AppRouter {
       ),
     ],
   );
-  
 }

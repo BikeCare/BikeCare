@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'helpers/routers.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_core/firebase_core.dart';
-import '../helpers/utils.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await deleteOldDatabase();
+void main() {
   runApp(const MyApp());
 }
 

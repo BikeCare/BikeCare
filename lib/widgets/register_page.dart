@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
+import '../helpers/utils.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -48,48 +47,36 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 1️⃣ Tạo user Firebase
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailCtrl.text.trim(),
-            password: _passwordCtrl.text.trim(),
-          );
-
-      // 2️⃣ Gửi email xác thực
-      await credential.user!.sendEmailVerification();
-
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-
-      // 3️⃣ Chuyển sang trang chờ xác thực
-      context.push(
-        '/verify-email',
-        extra: {
-          'username': _usernameCtrl.text.trim(),
-          'email': _emailCtrl.text.trim(),
-          'password': _passwordCtrl.text.trim(),
-          'fullName': _fullNameCtrl.text.trim(),
-          'brand': _brandCtrl.text.trim(),
-          'vehicleType': _vehicleType!,
-        },
+      // Đăng ký user vào local database
+      final result = await registerUser(
+        username: _usernameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+        fullName: _fullNameCtrl.text.trim(),
+        brand: _brandCtrl.text.trim(),
+        vehicleType: _vehicleType!,
       );
-    } on FirebaseAuthException catch (e) {
+
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      switch (e.code) {
-        case 'email-already-in-use':
-          _showMessage('Email đã được sử dụng');
-          break;
-        case 'weak-password':
-          _showMessage('Mật khẩu quá yếu');
-          break;
-        case 'invalid-email':
-          _showMessage('Email không hợp lệ');
-          break;
-        default:
-          _showMessage('Đăng ký thất bại');
+      if (result == null) {
+        // Thành công — chuyển thẳng sang trang thành công
+        context.push('/register-success');
+      } else {
+        // Xử lý lỗi từ registerUser
+        switch (result) {
+          case 'USERNAME_EXISTS':
+            _showMessage('Tên đăng nhập đã tồn tại');
+            break;
+          default:
+            _showMessage('Đăng ký thất bại');
+        }
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showMessage('Đăng ký thất bại: ${e.toString()}');
     }
   }
 

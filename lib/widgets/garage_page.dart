@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'add_vehicle_page.dart';
 import '../../helpers/utils.dart'; // Để lấy list xe từ DB
 
 class GaragePage extends StatefulWidget {
@@ -13,7 +12,7 @@ class GaragePage extends StatefulWidget {
 class _GaragePageState extends State<GaragePage> {
   // PageController để tạo hiệu ứng vuốt thẻ
   final PageController _pageController = PageController(viewportFraction: 0.9);
-  
+
   int _selectedIndex = 0; // Card đang được chọn
   List<Map<String, dynamic>> _vehicles = [];
   bool _isLoading = true;
@@ -40,7 +39,7 @@ class _GaragePageState extends State<GaragePage> {
   bool _isDue(int index) {
     // Logic giả: Xe ở vị trí chẵn thì "Đến hạn", lẻ thì "Hoàn tất"
     // Sau này bạn thay bằng logic so sánh ngày tháng thật
-    return index % 2 == 0; 
+    return index % 2 == 0;
   }
 
   @override
@@ -48,13 +47,16 @@ class _GaragePageState extends State<GaragePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Garage Của Tôi", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Garage Của Tôi",
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator()) 
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 const SizedBox(height: 20),
@@ -110,53 +112,66 @@ class _GaragePageState extends State<GaragePage> {
         children: [
           // Ảnh xe (Canh giữa)
           Positioned(
-            top: 20, left: 0, right: 0,
+            top: 20,
+            left: 0,
+            right: 0,
             child: Center(
-              child: Image.asset(
-                imgPath, 
-                height: 100, 
-                fit: BoxFit.contain
-              ),
+              child: Image.asset(imgPath, height: 100, fit: BoxFit.contain),
             ),
           ),
-          
+
           // Tên & Model
           Positioned(
-            bottom: 60, left: 20,
+            bottom: 60,
+            left: 20,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   getVehicleDisplayName(vehicle).toUpperCase(), // Tên xe/Hãng
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFC8A037)), // Màu vàng nghệ
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFC8A037),
+                  ), // Màu vàng nghệ
                 ),
                 Text(
                   "${vehicle['brand']} / ${vehicle['vehicle_type']}",
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Text("Bảo hành: ${vehicle['warranty_end'] ?? 'N/A'}", style: const TextStyle(fontSize: 12)),
+                Text(
+                  "Bảo hành: ${vehicle['warranty_end'] ?? 'N/A'}",
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
             ),
           ),
 
           // Nút "Xem thêm"
           Positioned(
-            right: 20, bottom: 80,
+            right: 20,
+            bottom: 80,
             child: TextButton(
               onPressed: () {
                 // TODO: Mở trang chi tiết xe (vehicle_detail_page)
               },
-              child: const Text("Xem thêm", style: TextStyle(color: Colors.blue)),
+              child: const Text(
+                "Xem thêm",
+                style: TextStyle(color: Colors.blue),
+              ),
             ),
           ),
 
           // Label "Đến hạn" / "Hoàn tất"
           Positioned(
-            bottom: 20, right: 20,
+            bottom: 20,
+            right: 20,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isMaintenanceDue ? const Color(0xFFFBC71C) : const Color(0xFFA5D6A7), // Vàng hoặc Xanh
+                color: isMaintenanceDue
+                    ? const Color(0xFFFBC71C)
+                    : const Color(0xFFA5D6A7), // Vàng hoặc Xanh
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -167,7 +182,7 @@ class _GaragePageState extends State<GaragePage> {
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -181,7 +196,7 @@ class _GaragePageState extends State<GaragePage> {
         // Dùng context.push của GoRouter thay vì Navigator.push
         // Chờ kết quả trả về (true nếu thêm thành công)
         final result = await context.push<bool>('/add-vehicle');
-        
+
         if (result == true) {
           _loadVehicles(); // Reload lại danh sách xe nếu có xe mới
         }
@@ -192,18 +207,32 @@ class _GaragePageState extends State<GaragePage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid, width: 2), // Viền nét đứt hoặc liền
+          border: Border.all(
+            color: Colors.grey.shade300,
+            style: BorderStyle.solid,
+            width: 2,
+          ), // Viền nét đứt hoặc liền
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blue[50]),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blue[50],
+              ),
               child: const Icon(Icons.add, size: 40, color: Colors.blue),
             ),
             const SizedBox(height: 10),
-            const Text("Thêm xe mới", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16))
+            const Text(
+              "Thêm xe mới",
+              style: TextStyle(
+                color: Colors.blue,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
           ],
         ),
       ),
@@ -218,13 +247,24 @@ class _GaragePageState extends State<GaragePage> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            Image.asset('images/motorbike.png', height: 100, color: Colors.grey.withOpacity(0.3)),
+            Image.asset(
+              'images/motorbike.png',
+              height: 100,
+              color: Colors.grey.withOpacity(0.3),
+            ),
             const SizedBox(height: 20),
             const Text(
-              "Thêm xe vào garage thôi bạn ơi!", 
-              style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.bold)
+              "Thêm xe vào garage thôi bạn ơi!",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const Text("Quản lý lịch sử bảo dưỡng dễ dàng hơn.", style: TextStyle(color: Colors.grey)),
+            const Text(
+              "Quản lý lịch sử bảo dưỡng dễ dàng hơn.",
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -238,31 +278,50 @@ class _GaragePageState extends State<GaragePage> {
         // --- 1. Lịch bảo dưỡng sắp tới ---
         Row(
           children: [
-            const Icon(Icons.calendar_month_outlined), 
+            const Icon(Icons.calendar_month_outlined),
             const SizedBox(width: 8),
-            const Text("Lịch bảo dưỡng sắp tới", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Lịch bảo dưỡng sắp tới",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         const SizedBox(height: 10),
-        
+
         // Mock Data Card
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("20/01/2025", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              const Text(
+                "20/01/2025",
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 4),
               RichText(
                 text: const TextSpan(
                   style: TextStyle(color: Colors.black),
                   children: [
-                    TextSpan(text: "Ghi chú: ", style: TextStyle(fontWeight: FontWeight.bold)),
-                    TextSpan(text: "Bảo dưỡng định kỳ trong gói Bảo hành 2 năm tại Honda Minh Nguyệt - Quận 5."),
+                    TextSpan(
+                      text: "Ghi chú: ",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text:
+                          "Bảo dưỡng định kỳ trong gói Bảo hành 2 năm tại Honda Minh Nguyệt - Quận 5.",
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -272,23 +331,41 @@ class _GaragePageState extends State<GaragePage> {
         // --- 2. Sửa chữa gần đây ---
         Row(
           children: [
-             const Icon(Icons.build_outlined),
-             const SizedBox(width: 8),
-             const Text("Sửa chữa gần đây", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-             const Spacer(),
-             const Icon(Icons.arrow_forward, color: Colors.grey)
+            const Icon(Icons.build_outlined),
+            const SizedBox(width: 8),
+            const Text(
+              "Sửa chữa gần đây",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            const Icon(Icons.arrow_forward, color: Colors.grey),
           ],
         ),
         const SizedBox(height: 10),
-        
+
         // List Mock Data
-        _buildRepairItem("Thay bố thắng", "Thanh Vinh Honda", "21/10/2025", "-300.000đ"),
-        _buildRepairItem("Thay đèn xe", "Minh Thắng Gara", "16/10/2025", "-400.000đ"),
+        _buildRepairItem(
+          "Thay bố thắng",
+          "Thanh Vinh Honda",
+          "21/10/2025",
+          "-300.000đ",
+        ),
+        _buildRepairItem(
+          "Thay đèn xe",
+          "Minh Thắng Gara",
+          "16/10/2025",
+          "-400.000đ",
+        ),
       ],
     );
   }
 
-  Widget _buildRepairItem(String title, String shop, String date, String price) {
+  Widget _buildRepairItem(
+    String title,
+    String shop,
+    String date,
+    String price,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -297,12 +374,24 @@ class _GaragePageState extends State<GaragePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text("$shop", style: const TextStyle(color: Colors.black87)),
-              Text(date, style: const TextStyle(color: Colors.blue, fontSize: 12)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Text(shop, style: const TextStyle(color: Colors.black87)),
+              Text(
+                date,
+                style: const TextStyle(color: Colors.blue, fontSize: 12),
+              ),
             ],
           ),
-          Text(price, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            price,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
         ],
       ),
     );

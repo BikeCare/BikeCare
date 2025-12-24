@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'homepage.dart';         
-import 'garage_list_page.dart'; 
+import 'homepage.dart';
+import 'garage_list_page.dart';
 import 'garage_page.dart';
+import 'history_expenses_page.dart';
+import 'profile_page.dart';
 
 class MainScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -29,21 +31,17 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
       ),
-      const GaragePage(),  
-      const GarageListPage(),                   // Tab 2: Tìm kiếm
-      const Center(child: Text("Lịch sử")),     // Tab 3
-
-      const Center(child: Text("Thông tin", style: TextStyle(fontSize: 20))), // Tab 4
+      const GaragePage(),
+      const GarageListPage(), // Tab 2: Tìm kiếm
+      HistoryExpensesPage(user: widget.user), // Tab 3
+      UserProfilePage(user: widget.user), // Tab 4
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -66,7 +64,11 @@ class _MainScreenState extends State<MainScreen> {
   BottomNavigationBarItem _bottomItem(String iconPath, String label) {
     return BottomNavigationBarItem(
       icon: Image.asset(iconPath, height: 24, color: Colors.white),
-      activeIcon: Image.asset(iconPath, height: 24, color: const Color(0xFF92D6E3)),
+      activeIcon: Image.asset(
+        iconPath,
+        height: 24,
+        color: const Color(0xFF92D6E3),
+      ),
       label: label,
     );
   }
