@@ -4,13 +4,15 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../helpers/utils.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> user;
+  final Function(int) onSwitchTab;
 
-  const HomePage({super.key, required this.user});
+  const HomePage({super.key, required this.user, required this.onSwitchTab});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -18,9 +20,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   /* ================= STATE ================= */
-  List<Map<String, dynamic>> _vehicles = [];
-  bool _loadingVehicles = true;
   late final String userId;
+
+  // Expense state
+  bool _loadingExpense = true;
+  Map<String, int> _monthByCategory = {};
+  int _monthTotal = 0;
 
   /* ================= HEADER INFO ================= */
   String city = '...';
@@ -38,8 +43,13 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     userId = widget.user['user_id'].toString();
-    _loadVehicles();
     _loadLocation();
+    _loadMonthlyExpense();
+  }
+
+  // Public method to refresh expense data
+  void refreshExpenses() {
+    _loadMonthlyExpense();
   }
 
   /* ================= BUILD ================= */
@@ -47,7 +57,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: _buildBottomNav(),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -56,7 +65,6 @@ class _HomePageState extends State<HomePage> {
               _buildHeader(),
               _buildMonthlyExpense(),
               _buildUtilities(),
-              _buildMyVehicles(),
             ],
           ),
         ),
@@ -169,6 +177,8 @@ class _HomePageState extends State<HomePage> {
   /* =========================================================
    * MONTHLY EXPENSE
    * ========================================================= */
+  /* ================= MONTHLY EXPENSE ================= */
+
   Widget _buildMonthlyExpense() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -180,12 +190,36 @@ class _HomePageState extends State<HomePage> {
             'Chi tiêu trong tháng này',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
-              _fakePieChart(),
+              _expensePieChart(),
               const SizedBox(width: 16),
-              Expanded(child: _expenseLegend()),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _expenseLegend(),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        widget.onSwitchTab(3);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF41ACD8),
+                        foregroundColor: const Color(0xFFFBC71C),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        'Xem lịch sử chi tiêu',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -193,46 +227,70 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _fakePieChart() {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Color(0xFF7BAEC8),
-      ),
-      child: const Center(
-        child: Text(
-          'Pie\nChart',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-    );
-  }
-
   Widget _expenseLegend() {
+    if (_loadingExpense) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_monthByCategory.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _legendItem('Bảo dưỡng định kỳ', Colors.blue),
+          _legendItem('Sửa chữa khẩn cấp', Colors.blueGrey),
+          _legendItem('Nâng cấp & Tân trang', Colors.lightBlue),
+          _legendItem('Phụ tùng mua ngoài', Colors.teal),
+        ],
+      );
+    }
+
+    final entries = _monthByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _legendItem('Bảo dưỡng xe định kỳ', Colors.blue),
-        _legendItem('Sửa chữa khẩn cấp', Colors.blueGrey),
-        _legendItem('Nâng cấp & Tân trang', Colors.lightBlue),
-        _legendItem('Phụ tùng mua ngoài', Colors.teal),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF41ACD8),
-            foregroundColor: const Color(0xFFFBC71C),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+        ...entries
+            .take(4)
+            .map(
+              (e) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 6, backgroundColor: colorOf(e.key)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        e.key,
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      money(e.value),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          child: const Text(
-            'Xem lịch sử chi tiêu',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+        const Divider(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Tổng:', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              money(_monthTotal),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Colors.blue,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -296,7 +354,7 @@ class _HomePageState extends State<HomePage> {
               child: _utilityCard(
                 'images/calendar.png',
                 'Đặt lịch \n bảo dưỡng',
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () => context.push('/booking', extra: widget.user),
               ),
             ),
             const SizedBox(width: 8),
@@ -305,7 +363,7 @@ class _HomePageState extends State<HomePage> {
                 'images/garage.png',
                 'Gara \n yêu thích',
                 imageSize: 52,
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () => context.push('/favorites'),
               ),
             ),
           ],
@@ -317,7 +375,8 @@ class _HomePageState extends State<HomePage> {
               child: _utilityCard(
                 'images/tips.png',
                 'Mẹo \n bảo dưỡng',
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                //imageSize: 60,
+                onTap: () => context.push('/maintenance-tips'),
               ),
             ),
             const SizedBox(width: 8),
@@ -325,7 +384,7 @@ class _HomePageState extends State<HomePage> {
               child: _utilityCard(
                 'images/search.png',
                 'Tra cứu \nphạt nguội',
-                onTap: () => context.go('/dashboard', extra: widget.user),
+                onTap: () => context.push('/traffic-fine', extra: widget.user),
               ),
             ),
           ],
@@ -364,140 +423,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-  }
-
-  /* =========================================================
-   * MY VEHICLES
-   * ========================================================= */
-  Widget _buildMyVehicles() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Xe của tôi',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _buildVehicleContent(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVehicleContent() {
-    if (_loadingVehicles) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_vehicles.isEmpty) {
-      return const Text('Bạn chưa thêm xe nào');
-    }
-
-    return SizedBox(
-      height: 150,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _vehicles.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, index) {
-          final vehicle = _vehicles[index];
-          return _vehicleCard(
-            title: getVehicleDisplayName(vehicle),
-            imagePath: getVehicleImageByType(vehicle['vehicle_type']),
-            vehicleType: vehicle['vehicle_type'],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _vehicleCard({
-    required String title,
-    required String imagePath,
-    required String vehicleType,
-  }) {
-    return Container(
-      width: 230,
-      decoration: _cardDecoration,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: 10,
-            left: 16,
-            right: 16,
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 35,
-                fontWeight: FontWeight.bold,
-                color: Colors.amber,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 10,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Image.asset(
-                imagePath,
-                height: getVehicleImageHeight(vehicleType),
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.directions_bike, size: 80),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /* =========================================================
-   * BOTTOM NAV
-   * ========================================================= */
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.black,
-      selectedItemColor: const Color(0xFF92D6E3),
-      unselectedItemColor: Colors.white,
-      showUnselectedLabels: true,
-      items: [
-        _bottomItem('images/home.png', 'Trang chủ'),
-        _bottomItem('images/gara.png', 'Garage'),
-        _bottomItem('images/find.png', 'Tìm'),
-        _bottomItem('images/history.png', 'Lịch sử'),
-        _bottomItem('images/profile.png', 'Thông tin'),
-      ],
-    );
-  }
-
-  BottomNavigationBarItem _bottomItem(String iconPath, String label) {
-    return BottomNavigationBarItem(
-      icon: Image.asset(iconPath, height: 24, color: Colors.white),
-      activeIcon: Image.asset(
-        iconPath,
-        height: 24,
-        color: const Color(0xFF92D6E3),
-      ),
-      label: label,
-    );
-  }
-
-  /* =========================================================
-   * DATA & LOCATION
-   * ========================================================= */
-  Future<void> _loadVehicles() async {
-    final result = await getUserVehicles(userId);
-    setState(() {
-      _vehicles = result;
-      _loadingVehicles = false;
-    });
   }
 
   Future<void> _loadLocation() async {
@@ -620,5 +545,127 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  // =========================================================
+  // EXPENSE PIE CHART
+  // =========================================================
+  Widget _expensePieChart() {
+    if (_loadingExpense) {
+      return const SizedBox(
+        width: 120,
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_monthTotal <= 0 || _monthByCategory.isEmpty) {
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFF7BAEC8),
+        ),
+        child: const Center(
+          child: Text(
+            'Chưa có\nchi tiêu',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    final entries = _monthByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final sections = <PieChartSectionData>[];
+    for (final e in entries) {
+      final percent = (e.value / _monthTotal) * 100.0;
+      sections.add(
+        PieChartSectionData(
+          value: e.value.toDouble(),
+          color: colorOf(e.key),
+          title: percent >= 10 ? '${percent.toStringAsFixed(0)}%' : '',
+          radius: 54,
+          titleStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 130,
+      height: 130,
+      child: PieChart(
+        PieChartData(
+          sections: sections,
+          centerSpaceRadius: 22,
+          sectionsSpace: 3,
+        ),
+      ),
+    );
+  }
+
+  Color colorOf(String cat) {
+    switch (cat) {
+      case 'Bảo dưỡng định kỳ':
+        return Colors.blue;
+      case 'Sửa chữa khẩn cấp':
+        return Colors.blueGrey;
+      case 'Nâng cấp & tân trang':
+        return Colors.lightBlue;
+      case 'Phụ tùng':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String money(int amount) {
+    final formatter = NumberFormat('#,###', 'vi_VN');
+    return '${formatter.format(amount)} đ';
+  }
+
+  Future<void> _loadMonthlyExpense() async {
+    final rows = await getUserExpenses(userId);
+
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 1);
+
+    final Map<String, int> agg = {};
+    int total = 0;
+
+    for (final r in rows) {
+      final dateStr = r['expense_date']?.toString();
+      if (dateStr != null) {
+        try {
+          final date = DateTime.parse(dateStr);
+          if (date.isAfter(startOfMonth.subtract(const Duration(days: 1))) &&
+              date.isBefore(endOfMonth)) {
+            final cat = (r['category_name'] ?? 'Khác').toString();
+            final amount = (r['amount'] ?? 0) as int;
+
+            agg[cat] = (agg[cat] ?? 0) + amount;
+            total += amount;
+          }
+        } catch (e) {
+          // Skip invalid dates
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _monthByCategory = agg;
+        _monthTotal = total;
+        _loadingExpense = false;
+      });
+    }
   }
 }

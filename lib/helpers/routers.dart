@@ -8,11 +8,19 @@ import '../widgets/register_page.dart';
 import '../widgets/register_success_page.dart';
 import '../widgets/welcome_2.dart';
 import '../widgets/welcome_1.dart';
-import '../widgets/homepage.dart';
+import '../widgets/main_screen.dart';
+//import '../widgets/homepage.dart';
 import '../widgets/verify_email_page.dart';
+import '../garage/garage_list_page.dart';
+import '../garage/garage_detail_page.dart';
+import '../favorite/favorite_page.dart';
+import '../vehicle/add_vehicle_page.dart';
+import '../booking/booking_flow.dart';
+import '../maintenance_page/maintenance_tips_page.dart';
+import '../widgets/history_expenses_page.dart';
+import '../widgets/services/traffic_fine_page.dart';
 
 class AppRouter {
-  // Định nghĩa hiệu ứng chuyển trang (slide từ phải sang)
   static CustomTransitionPage<void> _buildSlideTransition(
     BuildContext context,
     GoRouterState state,
@@ -35,7 +43,6 @@ class AppRouter {
     );
   }
 
-  // Cấu hình router
   static final GoRouter router = GoRouter(
     initialLocation: '/welcome-1',
     routes: [
@@ -53,11 +60,9 @@ class AppRouter {
         path: '/homepage',
         pageBuilder: (context, state) {
           final user = state.extra as Map<String, dynamic>;
-
-          return _buildSlideTransition(context, state, HomePage(user: user));
+          return _buildSlideTransition(context, state, MainScreen(user: user));
         },
       ),
-
       GoRoute(
         path: '/register-success',
         pageBuilder: (context, state) =>
@@ -84,6 +89,91 @@ class AppRouter {
         path: '/welcome-1',
         pageBuilder: (context, state) =>
             _buildSlideTransition(context, state, const WelcomePage1()),
+      ),
+
+      // === GARAGE ROUTES ===
+      GoRoute(
+        path: '/garage/list',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const GarageListPage()),
+      ),
+      GoRoute(
+        path: '/garage/detail',
+        pageBuilder: (context, state) {
+          final garage = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            GarageDetailPage(garage: garage),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/favorites',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const FavoritePage()),
+      ),
+      GoRoute(
+        path: '/add-vehicle',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const AddVehiclePage()),
+      ),
+
+      // === BOOKING ROUTE ===
+      GoRoute(
+        path: '/booking',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>?;
+          return _buildSlideTransition(context, state, BookingFlow(user: user));
+        },
+      ),
+
+      // === MAINTENANCE TIPS ROUTES ===
+      GoRoute(
+        path: '/maintenance-tips',
+        pageBuilder: (context, state) =>
+            _buildSlideTransition(context, state, const MaintenanceTipsPage()),
+      ),
+      GoRoute(
+        path: '/maintenance-tips/detail',
+        pageBuilder: (context, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            MaintenanceTipDetailPage(
+              id: data['tip_id'] as int,
+              title: data['tip_title'] as String,
+              content: data['tip_content'] as String,
+            ),
+          );
+        },
+      ),
+
+      // === HISTORY EXPENSES ROUTE ===
+      GoRoute(
+        path: '/history-expenses',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            HistoryExpensesPage(user: user),
+          );
+        },
+      ),
+
+      // === TRAFFIC FINE ROUTE ===
+      GoRoute(
+        path: '/traffic-fine',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            TrafficFinePage(user: user),
+          );
+        },
       ),
     ],
   );
