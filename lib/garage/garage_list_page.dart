@@ -4,104 +4,83 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../helpers/utils.dart';
 
-class FavoritePage extends StatefulWidget {
-  const FavoritePage({super.key});
+class GarageListPage extends StatefulWidget {
+  const GarageListPage({super.key});
 
   @override
-  State<FavoritePage> createState() => _FavoritePageState();
+  State<GarageListPage> createState() => _GarageListPageState();
 }
 
-class _FavoritePageState extends State<FavoritePage> {
-  // Giả lập user hiện tại
-  final String currentUserId = "user_001"; // Sau này thay bằng ID thật
-
-  List<Map<String, dynamic>> _favorites = [];
+class _GarageListPageState extends State<GarageListPage> {
+  List<Map<String, dynamic>> _garages = [];
   bool _isLoading = true;
+  String _searchKeyword = "";
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initData();
   }
 
-  // === 1. LOAD DATA & TÍNH KHOẢNG CÁCH ===
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
+  // === 1. CÁC HÀM LOGIC DATA  ===
+  Future<void> _initData() async {
     try {
-      // A. Lấy danh sách yêu thích từ DB
-      List<Map<String, dynamic>> rawData = await getFavoriteGarages(
-        currentUserId,
+      // 1. Cố gắng lấy vị trí thật
+      Position position = await _determinePosition();
+      // 2. Lấy data và tính khoảng cách
+      final data = await getNearestGarages(
+        position.latitude,
+        position.longitude,
       );
-
-      // B. Lấy vị trí hiện tại để tính khoảng cách
-      Position? currentPos;
-      try {
-        currentPos = await _determinePosition();
-      } catch (e) {
-        // Nếu không lấy được vị trí thì thôi (coi như user tắt GPS)
-        print("Không lấy được vị trí: $e");
-      }
-
-      // C. Xử lý tính khoảng cách cho từng item
-      List<Map<String, dynamic>> processedData = [];
-      for (var item in rawData) {
-        double distance = 0.0;
-        if (currentPos != null) {
-          double storeLat = item['lat'] ?? 0.0;
-          double storeLng = item['lng'] ?? 0.0;
-          if (storeLat != 0 && storeLng != 0) {
-            double distMeters = Geolocator.distanceBetween(
-              currentPos.latitude,
-              currentPos.longitude,
-              storeLat,
-              storeLng,
-            );
-            distance = double.parse((distMeters / 1000).toStringAsFixed(1));
-          }
-        }
-
-        // Clone ra map mới để thêm field distance
-        processedData.add({
-          ...item,
-          'distance': distance, // Gán khoảng cách
-        });
-      }
 
       if (mounted) {
         setState(() {
-          _favorites = processedData;
+          _garages = data;
           _isLoading = false;
         });
       }
     } catch (e) {
-      print("Lỗi load favorites: $e");
-      if (mounted) setState(() => _isLoading = false);
+      // FALLBACK: Nếu lỗi GPS thì dùng toạ độ mặc định Quận 10
+      print("Lỗi GPS: $e -> Dùng toạ độ mặc định Quận 10");
+      final data = await getNearestGarages(10.771450, 106.666980);
+
+      if (mounted) {
+        setState(() {
+          _garages = data;
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // Hàm lấy vị trí (Copy từ GarageListPage để đồng bộ)
   Future<Position> _determinePosition() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return Future.error('Location services are disabled.');
+    bool serviceEnabled;
+    LocationPermission permission;
 
-    LocationPermission permission = await Geolocator.checkPermission();
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied)
+      if (permission == LocationPermission.denied) {
         return Future.error('Location permissions are denied');
+      }
     }
-    return await Geolocator.getCurrentPosition();
+
+    return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.medium,
+      timeLimit: const Duration(seconds: 5),
+    );
   }
 
-  // === 2. LOGIC GỌI ĐIỆN (POPUP) ===
+  // === 2. HÀM HIỆN POPUP GỌI ĐIỆN ===
   void _showCallPopup(String? phone) {
-    if (phone == null || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Số điện thoại không khả dụng")),
-      );
-      return;
-    }
+    if (phone == null || phone.isEmpty) return;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -110,13 +89,15 @@ class _FavoritePageState extends State<FavoritePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+            child: const Text("Hủy"),
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(context); // Đóng popup trước
               final Uri launchUri = Uri(scheme: 'tel', path: phone);
-              if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
+              if (await canLaunchUrl(launchUri)) {
+                await launchUrl(launchUri);
+              }
             },
             icon: const Icon(Icons.call),
             label: const Text("Gọi ngay"),
@@ -130,63 +111,70 @@ class _FavoritePageState extends State<FavoritePage> {
     );
   }
 
+  // Hàm lọc danh sách
+  List<Map<String, dynamic>> get _filteredGarages {
+    if (_searchKeyword.isEmpty) return _garages;
+    return _garages.where((g) {
+      return g['name'].toString().toLowerCase().contains(
+            _searchKeyword.toLowerCase(),
+          ) ||
+          g['address'].toString().toLowerCase().contains(
+            _searchKeyword.toLowerCase(),
+          );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Gara Yêu Thích",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      backgroundColor: Colors.grey[50], // Màu nền nhẹ cho toàn trang
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _favorites.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _favorites.length,
-              itemBuilder: (context, index) {
-                return _buildFavoriteCard(_favorites[index]);
-              },
+    // Dùng Container nền trắng thay vì Scaffold (để tránh 2 lớp AppBar nếu lồng trong MainScreen)
+    return Container(
+      color: Colors.white,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // THANH TÌM KIẾM
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _searchKeyword = value),
+                  decoration: const InputDecoration(
+                    hintText: "Tìm kiếm cửa hàng",
+                    prefixIcon: Icon(Icons.search, color: Colors.blue),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
             ),
-    );
-  }
 
-  // Widget hiển thị khi danh sách trống
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.favorite_border, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text(
-            "Chưa có gara yêu thích nào",
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
-        ],
+            // DANH SÁCH GARA
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _filteredGarages.length,
+                      itemBuilder: (context, index) {
+                        return _buildGarageCard(_filteredGarages[index]);
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // === 3. CARD GIAO DIỆN (GIỐNG TRANG LIST) ===
-  Widget _buildFavoriteCard(Map<String, dynamic> garage) {
+  Widget _buildGarageCard(Map<String, dynamic> garage) {
     return GestureDetector(
-      onTap: () async {
-        // Chuyển sang trang detail, chờ quay về thì reload lại list (để lỡ user bỏ tim bên đó thì bên này cập nhật luôn)
-        await context.push('/garage/detail', extra: garage);
-        _loadData();
-      },
+      onTap: () => context.push('/garage/detail', extra: garage),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
@@ -205,19 +193,29 @@ class _FavoritePageState extends State<FavoritePage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ảnh vuông bo góc
+            // === ẢNH ĐẠI DIỆN ĐỒNG NHẤT (FRAME CHUNG) ===
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 width: 90,
-                height: 90,
+                height: 90, // Khung ảnh vuông cố định
                 color: Colors.grey[100],
-                child: _buildImg(garage['image'] ?? ''),
+                child: garage['image'].toString().startsWith('http')
+                    ? Image.network(
+                        garage['image'],
+                        fit: BoxFit.cover,
+                      ) // Ảnh mạng -> Cắt đầy khung (Cover)
+                    : Image.asset(
+                        garage['image'] ?? 'images/garage.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.store, color: Colors.grey),
+                      ),
               ),
             ),
             const SizedBox(width: 12),
 
-            // Thông tin
+            // THÔNG TIN BÊN PHẢI
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,7 +247,7 @@ class _FavoritePageState extends State<FavoritePage> {
                         child: Row(
                           children: [
                             Text(
-                              "${garage['rating'] ?? 0}",
+                              "${garage['rating']}",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
@@ -267,28 +265,14 @@ class _FavoritePageState extends State<FavoritePage> {
                     ],
                   ),
                   const SizedBox(height: 4),
-
-                  // Khoảng cách
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 12,
-                        color: Colors.grey,
-                      ),
-                      Text(
-                        " ${garage['distance']} km từ bạn",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    "${garage['distance']} km từ bạn",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
-                  // Nút bấm (Style nền nhạt giống trang List)
+                  // NÚT GỌI & ĐẶT LỊCH (Style mới)
                   Row(
                     children: [
                       Expanded(
@@ -305,7 +289,9 @@ class _FavoritePageState extends State<FavoritePage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: InkWell(
-                          onTap: () {}, // Đặt lịch placeholder
+                          onTap: () => context.push(
+                            '/booking',
+                          ), // Chuyển đến trang đặt lịch
                           child: _actionButton(
                             Icons.calendar_today,
                             "Đặt lịch",
@@ -325,7 +311,7 @@ class _FavoritePageState extends State<FavoritePage> {
     );
   }
 
-  // Helper Button (Dùng chung style)
+  // Widget nút bấm nhỏ dùng chung
   Widget _actionButton(
     IconData icon,
     String label,
@@ -353,23 +339,6 @@ class _FavoritePageState extends State<FavoritePage> {
           ),
         ],
       ),
-    );
-  }
-
-  // Helper Image
-  Widget _buildImg(String url) {
-    if (url.startsWith('http')) {
-      return Image.network(
-        url,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-            const Icon(Icons.store, color: Colors.grey),
-      );
-    }
-    return Image.asset(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => const Icon(Icons.store, color: Colors.grey),
     );
   }
 }

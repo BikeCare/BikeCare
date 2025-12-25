@@ -49,8 +49,9 @@ dependencies:
   firebase_auth: ^5.0.0
   google_maps_flutter: ^2.5.0
   photo_view: ^0.15.0
-
-
+  fl_chart: ^0.70.0
+  image_picker: ^1.1.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
