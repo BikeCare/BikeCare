@@ -19,6 +19,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  
   /* ================= STATE ================= */
   late final String userId;
 
@@ -65,6 +66,7 @@ class _HomePageState extends State<HomePage> {
               _buildHeader(),
               _buildMonthlyExpense(),
               _buildUtilities(),
+
             ],
           ),
         ),
