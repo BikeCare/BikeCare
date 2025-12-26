@@ -211,8 +211,8 @@ Future<String?> registerUser({
   required String email,
   required String password,
   required String fullName,
-  required String brand,
-  required String vehicleType,
+  String? brand,        // [FIX] Thành optional
+  String? vehicleType,  // [FIX] Thành optional
 }) async {
   final db = await initializeDatabase();
 
@@ -224,8 +224,7 @@ Future<String?> registerUser({
   // 2️⃣ Generate IDs
   final uuid = const Uuid();
   final userId = uuid.v4();
-  final vehicleId = uuid.v4();
-
+  
   // 3️⃣ Insert USER
   await insertData(db, 'users', {
     'user_id': userId,
@@ -235,17 +234,19 @@ Future<String?> registerUser({
     'full_name': fullName,
   });
 
-  // 4️⃣ Insert VEHICLE
-  await insertData(db, 'vehicles', {
-    'vehicle_id': vehicleId,
-    'brand': brand,
-    'vehicle_type': vehicleType,
-    'user_id': userId,
-  });
+  // 4️⃣ Insert VEHICLE (Chỉ khi có thông tin xe)
+  if (brand != null && vehicleType != null) {
+    final vehicleId = uuid.v4();
+    await insertData(db, 'vehicles', {
+      'vehicle_id': vehicleId,
+      'brand': brand,
+      'vehicle_type': vehicleType,
+      'user_id': userId,
+    });
+  }
 
   return null; // SUCCESS
 }
-
 // =========================================================
 // SAVE USER'S VEHICLE
 // =========================================================
@@ -379,7 +380,7 @@ double getVehicleImageHeight(String vehicleType) {
 }
 
 // =========================================================
-// SEED GARAGE DATA (NẠP DỮ LIỆU GARA MẪU VÀO DB)
+// SEED GARAGE DATA
 // =========================================================
 Future<void> _seedGarages(Database db) async {
   final List<Map<String, dynamic>> garages = [
@@ -1217,5 +1218,161 @@ Future<List<Map<String, dynamic>>> getRecentRepairsByUser({
     LIMIT ?
   ''',
     [userId, limit],
+  );
+}
+
+// ========================== SELECT DATA TỪ BẢNG BOOKINGS ===============================
+// Lấy danh sách booking (Thêm các trường ID)
+Future<List<Map<String, dynamic>>> getUpcomingBookings(String userId) async {
+  final db = await initializeDatabase();
+  final today = DateTime.now().toIso8601String().split('T')[0];
+
+  return await db.rawQuery('''
+    SELECT 
+      b.booking_id, 
+      b.booking_date, 
+      b.booking_time,
+      b.garage_id,      -- QUAN TRỌNG
+      b.vehicle_id,     -- QUAN TRỌNG
+      g.garage_name,
+      v.vehicle_name, 
+      v.brand
+    FROM bookings b
+    LEFT JOIN garages g ON b.garage_id = g.garage_id
+    LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+    WHERE b.user_id = ? 
+      AND b.booking_date >= ?
+    ORDER BY b.booking_date ASC, b.booking_time ASC
+    LIMIT 3
+  ''', [userId, today]);
+}
+
+
+//  Lấy lịch sử (Thêm các trường ID)
+Future<List<Map<String, dynamic>>> getAllBookings(String userId) async {
+  final db = await initializeDatabase();
+  return await db.rawQuery('''
+    SELECT 
+      b.booking_id, 
+      b.booking_date, 
+      b.booking_time,
+      b.garage_id,      -- QUAN TRỌNG
+      b.vehicle_id,     -- QUAN TRỌNG
+      g.garage_name, 
+      v.vehicle_name, 
+      v.brand
+    FROM bookings b
+    LEFT JOIN garages g ON b.garage_id = g.garage_id
+    LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+    WHERE b.user_id = ? 
+    ORDER BY b.booking_date DESC, b.booking_time DESC
+  ''', [userId]);
+}
+
+// --- XÓA LỊCH ĐẶT ---
+Future<void> deleteBooking(String bookingId) async {
+  final db = await initializeDatabase();
+  // Xóa booking_services trước 
+  await db.delete('booking_services', where: 'booking_id = ?', whereArgs: [bookingId]);
+  // Xóa booking
+  await db.delete('bookings', where: 'booking_id = ?', whereArgs: [bookingId]);
+}
+
+ // --- CẬP NHẬT NGÀY GIỜ (DỜI LỊCH) ---
+Future<void> updateBookingDate(String bookingId, String newDate, String newTime) async {
+  final db = await initializeDatabase();
+  await db.update(
+    'bookings',
+    {
+      'booking_date': newDate, // YYYY-MM-DD
+      'booking_time': newTime, // HH:MM AM/PM
+    },
+    where: 'booking_id = ?',
+    whereArgs: [bookingId],
+  );
+}
+
+
+//  Hàm lấy danh sách dịch vụ của 1 booking
+Future<List<Map<String, dynamic>>> getBookingServices(String bookingId) async {
+  final db = await initializeDatabase();
+  return await db.rawQuery('''
+    SELECT s.service_name
+    FROM booking_services bs
+    JOIN services s ON bs.service_id = s.service_id
+    WHERE bs.booking_id = ?
+  ''', [bookingId]);
+}
+
+// Lấy tất cả dịch vụ (để hiện list cho user chọn lại)
+Future<List<Map<String, dynamic>>> getAllServices() async {
+  final db = await initializeDatabase();
+  return await db.query('services');
+}
+
+// Cập nhật thông tin chính của Booking (bao gồm cả Garage)
+Future<void> updateBookingInfo({
+  required String bookingId,
+  required String date,
+  required String time,
+  required String garageId,
+}) async {
+  final db = await initializeDatabase();
+  await db.update(
+    'bookings',
+    {
+      'booking_date': date,
+      'booking_time': time,
+      'garage_id': garageId,
+    },
+    where: 'booking_id = ?',
+    whereArgs: [bookingId],
+  );
+}
+
+//Cập nhật danh sách dịch vụ (Xóa cũ -> Thêm mới)
+Future<void> updateBookingServices(String bookingId, List<String> serviceIds) async {
+  final db = await initializeDatabase();
+  final uuid = const Uuid();
+  
+  await db.transaction((txn) async {
+    // 1. Xóa hết dịch vụ cũ
+    await txn.delete('booking_services', where: 'booking_id = ?', whereArgs: [bookingId]);
+    
+    // 2. Thêm lại dịch vụ mới đã chọn
+    for (var sId in serviceIds) {
+      await txn.insert('booking_services', {
+        'id': uuid.v4(),
+        'booking_id': bookingId,
+        'service_id': sId,
+      });
+    }
+  });
+}
+
+// Cập nhật thông tin xe
+Future<void> updateVehicle({
+  required String vehicleId,
+  required String brand,
+  required String vehicleType,
+  String? name,
+  String? licensePlate,
+  String? warrantyStart,
+  String? warrantyEnd,
+}) async {
+  final db = await initializeDatabase();
+  
+  await db.update(
+    'vehicles',
+    {
+      'brand': brand,
+      'vehicle_type': vehicleType,
+      'vehicle_name': name ?? '',
+      'license_plate': licensePlate ?? '',
+      'warranty_start': warrantyStart ?? '',
+      'warranty_end': warrantyEnd ?? '',
+    },
+    where: 'vehicle_id = ?',
+    whereArgs: [vehicleId],
   );
 }

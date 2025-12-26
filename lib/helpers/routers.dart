@@ -19,6 +19,9 @@ import '../booking/booking_flow.dart';
 import '../maintenance_page/maintenance_tips_page.dart';
 import '../widgets/history_expenses_page.dart';
 import '../widgets/services/traffic_fine_page.dart';
+import '../booking/booking_history_page.dart';
+import '../booking/booking_detail_page.dart'; 
+import '../vehicle/vehicle_detail_page.dart';
 
 class AppRouter {
   static CustomTransitionPage<void> _buildSlideTransition(
@@ -148,6 +151,33 @@ class AppRouter {
         },
       ),
 
+      GoRoute(
+        path: '/booking-history',
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context, 
+            state, 
+            BookingHistoryPage(user: user)
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/booking-detail',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            BookingDetailPage(
+              booking: extra['booking'],
+              user: extra['user'],
+            ),
+          );
+        },
+      ),
+
       // === MAINTENANCE TIPS ROUTES ===
       GoRoute(
         path: '/maintenance-tips',
@@ -192,6 +222,19 @@ class AppRouter {
             context,
             state,
             TrafficFinePage(user: user),
+          );
+        },
+      ),
+      
+      // === VEHICLE DETAIL ROUTE ===
+      GoRoute(
+        path: '/vehicle-detail',
+        pageBuilder: (context, state) {
+          final vehicle = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            VehicleDetailPage(vehicle: vehicle),
           );
         },
       ),

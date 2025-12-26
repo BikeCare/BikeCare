@@ -93,7 +93,7 @@ class _HomePageState extends State<HomePage> {
                   style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber,
+                    color: Color(0xFFFFC107),
                   ),
                 ),
                 const SizedBox(height: 6),

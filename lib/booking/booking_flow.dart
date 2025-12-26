@@ -46,9 +46,21 @@ class _BookingFlowState extends State<BookingFlow> {
   void resetFlow() {
     setState(() {
       currentStep = 0;
-      // Reset booking data for new booking
-      booking = BookingState();
+      
+      // Lưu lại UserID trước khi reset
+      String? savedUserId = booking.userId; 
+      
+      // Tạo object mới (lúc này nó trắng tinh)
+      booking = BookingState(); 
+      
+      // Gán lại UserID cho nó (để không bị null)
+      booking.userId = savedUserId; 
+      // --------------------
     });
+  }
+
+  void _finishBooking() {
+    Navigator.of(context).pop(true);
   }
 
   @override
@@ -97,7 +109,7 @@ class _BookingFlowState extends State<BookingFlow> {
               db: db,
             );
           default:
-            return Step5Success(onBack: resetFlow);
+            return Step5Success(onBack: _finishBooking);
         }
       },
     );

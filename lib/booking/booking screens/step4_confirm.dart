@@ -108,8 +108,7 @@ class _Step4ConfirmState extends State<Step4Confirm> {
       // Prepare Booking Data
       final bookingData = {
         'booking_id': bookingId,
-        'user_id':
-            null, // Assuming current user not tracked strictly or nullable
+        'user_id': widget.booking.userId,
         'vehicle_id': widget.booking.vehicleId,
         'garage_id': widget.booking.garageId,
         'booking_date': widget.booking.bookingDate?.toIso8601String(),

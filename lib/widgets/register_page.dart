@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -16,10 +15,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _usernameCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
   final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _brandCtrl = TextEditingController();
   final TextEditingController _fullNameCtrl = TextEditingController();
 
-  String? _vehicleType; // <175cc | >=175cc
+  // [ĐÃ BỎ] brandCtrl và vehicleType
   bool _isLoading = false;
 
   @override
@@ -28,19 +26,16 @@ class _RegisterPageState extends State<RegisterPage> {
     _fullNameCtrl.dispose();
     _passwordCtrl.dispose();
     _emailCtrl.dispose();
-    _brandCtrl.dispose();
-    super.dispose(); //
+    super.dispose();
   }
 
   // ================= SUBMIT =================
   Future<void> _handleRegister() async {
-    // ===== VALIDATE =====
+    // ===== VALIDATE (Đã bỏ check xe) =====
     if (_usernameCtrl.text.isEmpty ||
         _passwordCtrl.text.isEmpty ||
         _fullNameCtrl.text.isEmpty ||
-        _emailCtrl.text.isEmpty ||
-        _brandCtrl.text.isEmpty ||
-        _vehicleType == null) {
+        _emailCtrl.text.isEmpty) {
       _showMessage('Vui lòng nhập đầy đủ thông tin');
       return;
     }
@@ -62,6 +57,7 @@ class _RegisterPageState extends State<RegisterPage> {
       setState(() => _isLoading = false);
 
       // 3️⃣ Chuyển sang trang chờ xác thực
+      // [FIX] Không truyền brand và vehicleType nữa
       context.push(
         '/verify-email',
         extra: {
@@ -69,8 +65,6 @@ class _RegisterPageState extends State<RegisterPage> {
           'email': _emailCtrl.text.trim(),
           'password': _passwordCtrl.text.trim(),
           'fullName': _fullNameCtrl.text.trim(),
-          'brand': _brandCtrl.text.trim(),
-          'vehicleType': _vehicleType!,
         },
       );
     } on FirebaseAuthException catch (e) {
@@ -162,15 +156,7 @@ class _RegisterPageState extends State<RegisterPage> {
               _label('Email*'),
               _input(_emailCtrl, borderBlue),
 
-              const SizedBox(height: 20),
-
-              _label('Loại xe*'),
-              _dropdown(borderBlue),
-
-              const SizedBox(height: 20),
-
-              _label('Hãng xe*'),
-              _input(_brandCtrl, borderBlue),
+              // [ĐÃ BỎ] UI chọn Hãng xe & Loại xe
 
               const SizedBox(height: 36),
 
@@ -225,35 +211,6 @@ class _RegisterPageState extends State<RegisterPage> {
       obscureText: obscure,
       style: GoogleFonts.nunito(fontSize: 16),
       decoration: _inputDecoration(borderColor),
-    );
-  }
-
-  Widget _dropdown(Color borderColor) {
-    return DropdownButtonFormField<String>(
-      initialValue: _vehicleType,
-      hint: Text('Chọn loại xe', style: GoogleFonts.nunito(fontSize: 16)),
-      style: GoogleFonts.nunito(fontSize: 16, color: Colors.black),
-      items: const [
-        DropdownMenuItem(value: '<175cc', child: Text('Dưới 175cc')),
-        DropdownMenuItem(value: '>=175cc', child: Text('Từ 175cc trở lên')),
-      ],
-      onChanged: (value) {
-        setState(() => _vehicleType = value);
-      },
-      decoration: _inputDecoration(borderColor).copyWith(
-        suffixIcon: Container(
-          margin: const EdgeInsets.only(right: 6),
-          decoration: BoxDecoration(
-            color: borderColor,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(
-            Icons.arrow_drop_down,
-            size: 40,
-            color: Colors.black,
-          ),
-        ),
-      ),
     );
   }
 

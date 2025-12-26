@@ -27,9 +27,7 @@ class _GarageListPageState extends State<GarageListPage> {
   // === 1. CÁC HÀM LOGIC DATA  ===
   Future<void> _initData() async {
     try {
-      // 1. Cố gắng lấy vị trí thật
       Position position = await _determinePosition();
-      // 2. Lấy data và tính khoảng cách
       final data = await getNearestGarages(
         position.latitude,
         position.longitude,
@@ -42,7 +40,6 @@ class _GarageListPageState extends State<GarageListPage> {
         });
       }
     } catch (e) {
-      // FALLBACK: Nếu lỗi GPS thì dùng toạ độ mặc định Quận 10
       print("Lỗi GPS: $e -> Dùng toạ độ mặc định Quận 10");
       final data = await getNearestGarages(10.771450, 106.666980);
 
@@ -78,41 +75,126 @@ class _GarageListPageState extends State<GarageListPage> {
     );
   }
 
-  // === 2. HÀM HIỆN POPUP GỌI ĐIỆN ===
-  void _showCallPopup(String? phone) {
+  // === 2. HÀM GỌI ĐIỆN (ĐÃ SỬA LOGIC LAUNCHER) ===
+  void _showCallBottomSheet(String? phone, String garageName) {
     if (phone == null || phone.isEmpty) return;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Liên hệ cửa hàng"),
-        content: Text("Số điện thoại: $phone\nBạn có muốn gọi ngay không?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Hủy"),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context); // Đóng popup trước
-              final Uri launchUri = Uri(scheme: 'tel', path: phone);
-              if (await canLaunchUrl(launchUri)) {
-                await launchUrl(launchUri);
-              }
-            },
-            icon: const Icon(Icons.call),
-            label: const Text("Gọi ngay"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Liên hệ cửa hàng",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Chọn số điện thoại để gọi nhanh",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+
+                // Item số điện thoại
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context); // Đóng sheet trước
+                    
+                    // [FIX] Xóa khoảng trắng và ký tự lạ, chỉ giữ số
+                    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                    final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+                    
+                    try {
+                      // [FIX] Dùng externalApplication để mở app Phone
+                      if (await canLaunchUrl(launchUri)) {
+                        await launchUrl(launchUri);
+                      } else {
+                        // Fallback: Thử launch không check canLaunch (đôi khi máy ảo báo false ảo)
+                        await launchUrl(launchUri, mode: LaunchMode.externalApplication);
+                      }
+                    } catch (e) {
+                      print("Lỗi gọi điện: $e");
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.phone_in_talk,
+                          size: 30,
+                          color: Color(0xFF5D4037),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                garageName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                phone,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 30, thickness: 1, color: Color(0xFFEEEEEE)),
+                
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF59CBEF),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Hủy bỏ",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // Hàm lọc danh sách
   List<Map<String, dynamic>> get _filteredGarages {
     if (_searchKeyword.isEmpty) return _garages;
     return _garages.where((g) {
@@ -127,13 +209,11 @@ class _GarageListPageState extends State<GarageListPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Dùng Container nền trắng thay vì Scaffold (để tránh 2 lớp AppBar nếu lồng trong MainScreen)
     return Container(
       color: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
-            // THANH TÌM KIẾM
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Container(
@@ -154,8 +234,6 @@ class _GarageListPageState extends State<GarageListPage> {
                 ),
               ),
             ),
-
-            // DANH SÁCH GARA
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -197,18 +275,14 @@ class _GarageListPageState extends State<GarageListPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // === ẢNH ĐẠI DIỆN ĐỒNG NHẤT (FRAME CHUNG) ===
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 width: 90,
-                height: 90, // Khung ảnh vuông cố định
+                height: 90,
                 color: Colors.grey[100],
                 child: garage['image'].toString().startsWith('http')
-                    ? Image.network(
-                        garage['image'],
-                        fit: BoxFit.cover,
-                      ) // Ảnh mạng -> Cắt đầy khung (Cover)
+                    ? Image.network(garage['image'], fit: BoxFit.cover)
                     : Image.asset(
                         garage['image'] ?? 'images/garage.png',
                         fit: BoxFit.cover,
@@ -218,13 +292,10 @@ class _GarageListPageState extends State<GarageListPage> {
               ),
             ),
             const SizedBox(width: 12),
-
-            // THÔNG TIN BÊN PHẢI
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tên + Rating
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -273,15 +344,12 @@ class _GarageListPageState extends State<GarageListPage> {
                     "${garage['distance']} km từ bạn",
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
-
                   const SizedBox(height: 8),
-
-                  // NÚT GỌI & ĐẶT LỊCH (Style mới)
                   Row(
                     children: [
                       Expanded(
                         child: InkWell(
-                          onTap: () => _showCallPopup(garage['phone']),
+                          onTap: () => _showCallBottomSheet(garage['phone'], garage['name']),
                           child: _actionButton(
                             Icons.call,
                             "Gọi điện",
@@ -293,9 +361,7 @@ class _GarageListPageState extends State<GarageListPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: InkWell(
-                          onTap: () => context.push(
-                            '/booking',
-                          ), // Chuyển đến trang đặt lịch
+                          onTap: () => context.push('/booking'),
                           child: _actionButton(
                             Icons.calendar_today,
                             "Đặt lịch",
@@ -315,7 +381,6 @@ class _GarageListPageState extends State<GarageListPage> {
     );
   }
 
-  // Widget nút bấm nhỏ dùng chung
   Widget _actionButton(
     IconData icon,
     String label,

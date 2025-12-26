@@ -24,10 +24,8 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
   int _dynamicReviewCount = 0;
   Map<int, int> _starCounts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
 
-  // State Yêu thích
   bool _isFavorited = false;
 
-  // === THÔNG TIN USER (QUAN TRỌNG ĐỂ HIỆN CHỮ "BẠN") ===
   late final String _currentUserId;
   late final String _currentUserName;
 
@@ -40,13 +38,9 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
     _loadData();
   }
 
-  // =========================================================
-  // 1. LOAD DATA
-  // =========================================================
   Future<void> _loadData() async {
     final garageId = widget.garage['id'];
 
-    // 1. Xử lý ảnh
     String? jsonImg = widget.garage['images'];
     if (jsonImg != null && jsonImg.isNotEmpty) {
       try {
@@ -59,10 +53,7 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
       _garageImages.add(widget.garage['image']);
     }
 
-    // 2. Check Yêu thích
     bool favStatus = await isFavorite(_currentUserId, garageId);
-
-    // 3. Review & Rating
     final reviews = await getReviews(garageId);
     double total = 0;
     _starCounts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
@@ -92,9 +83,6 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
     }
   }
 
-  // =========================================================
-  // 2. YÊU THÍCH (TIM)
-  // =========================================================
   Future<void> _toggleFavorite() async {
     setState(() => _isFavorited = !_isFavorited);
     await toggleFavorite(_currentUserId, widget.garage['id']);
@@ -112,54 +100,132 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
   }
 
   // =========================================================
-  // 3. GỌI ĐIỆN (POPUP + GỌI THẬT)
+  // GỌI ĐIỆN (Đã OK)
   // =========================================================
-  void _showCallPopup() {
+  void _showCallBottomSheet() {
     final phone = widget.garage['phone'];
+    final name = widget.garage['name'];
+
     if (phone == null || phone.toString().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Chưa cập nhật số điện thoại")),
       );
       return;
     }
-    showDialog(
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Liên hệ cửa hàng"),
-        content: Text("Bạn muốn gọi đến số:\n$phone"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              final Uri launchUri = Uri(scheme: 'tel', path: phone);
-              if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
-            },
-            icon: const Icon(Icons.call),
-            label: const Text("Gọi ngay"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Liên hệ cửa hàng",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Chọn số điện thoại để gọi nhanh",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final cleanPhone = phone.toString().replaceAll(RegExp(r'[^\d+]'), '');
+                    final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+                    
+                    try {
+                      await launchUrl(launchUri, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      print("Lỗi gọi điện: $e");
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.phone_in_talk,
+                          size: 30,
+                          color: Color(0xFF5D4037),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                phone,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 30, thickness: 1, color: Color(0xFFEEEEEE)),
+                
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF59CBEF),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "Hủy bỏ",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // =========================================================
-  // 4. GỬI ĐÁNH GIÁ (LOGIC HIỆN TÊN "BẠN")
-  // =========================================================
   void _submitReview(int star, String comment) async {
-    // [FIX] Lưu tên thật của User (_currentUserName) thay vì chuỗi cứng
     await addReview(widget.garage['id'], _currentUserName, star, comment);
 
     if (mounted) Navigator.pop(context);
     setState(() => _isLoading = true);
-    await _loadData(); // Load lại để thấy ngay
+    await _loadData();
 
     if (mounted) {
       ScaffoldMessenger.of(
@@ -237,33 +303,38 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
   }
 
   // =========================================================
-  // 5. HELPER: MAP & GALLERY
+  // 5. HELPER: MAP (SỬA ĐỔI: DÙNG ĐỊA CHỈ THAY VÌ TỌA ĐỘ)
   // =========================================================
   Future<void> _openMap() async {
-    final id = widget.garage['id'];
-    final lat = widget.garage['lat'];
-    final lng = widget.garage['lng'];
-    Uri googleUrl;
-    if (id.length > 15) {
-      googleUrl = Uri.parse("https://www.google.com/maps/search/...4");
-    } else if (lat != null && lng != null) {
-      googleUrl = Uri.parse(
-        "https://www.google.com/maps/search/?api=1&query=$lat,$lng",
+    // 1. Lấy địa chỉ của cửa hàng
+    final address = widget.garage['address'];
+    
+    if (address == null || address.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Không có địa chỉ để dẫn đường")),
       );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Chưa có vị trí")));
       return;
     }
+
+    // 2. Tạo Link Google Maps Search theo địa chỉ
+    // Cấu trúc: https://www.google.com/maps/search/?api=1&query=ĐỊA_CHỈ
+    final query = Uri.encodeComponent(address);
+    final Uri googleUrl = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
+
     try {
+      // 3. Force mở bằng ứng dụng ngoài (Google Maps App)
       if (await canLaunchUrl(googleUrl)) {
         await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
       } else {
+        // Fallback: Mở bằng trình duyệt nếu không có app
         await launchUrl(googleUrl);
       }
     } catch (e) {
-      print(e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Không thể mở bản đồ")),
+        );
+      }
     }
   }
 
@@ -297,9 +368,6 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
     );
   }
 
-  // =========================================================
-  // BUILD UI
-  // =========================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -383,14 +451,14 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
                     ),
                   ),
 
-                  // BUTTONS (Style List Page)
+                  // BUTTONS
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: _showCallPopup,
+                            onTap: _showCallBottomSheet,
                             child: _actionButton(
                               Icons.call,
                               "Gọi điện",
@@ -436,7 +504,7 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: _openMap,
+                          onPressed: _openMap, // Gọi hàm dẫn đường mới
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.blue,
@@ -621,7 +689,7 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // LIST REVIEWS (CÓ LOGIC HIỆN CHỮ "BẠN")
+                  // LIST REVIEWS
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -647,13 +715,11 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
                           separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final rv = _reviews[index];
-
-                            // [FIX] LOGIC SO SÁNH TÊN NGƯỜI DÙNG
                             String userName = rv['user_name'];
                             bool isMe = userName == _currentUserName;
                             String displayName = isMe
                                 ? "Bạn"
-                                : userName; // Nếu trùng tên thì hiện "Bạn"
+                                : userName;
 
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(

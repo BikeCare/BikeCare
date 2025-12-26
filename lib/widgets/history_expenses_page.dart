@@ -4,13 +4,15 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../../helpers/utils.dart';
 
-const Color kCyanMain = Color(0xFF59CBEF);
-const Color kCyanDeep = Color(0xFF2A9BC6);
-const Color kCard = Colors.white;
-const Color kBg = Colors.white;
-const Color kText = Color(0xFF111111);
-const Color kSubText = Color(0xFF666666);
-const Color kBorderSoft = Color(0xFFEEEEEE); // Grey border
+// --- PALETTE MÀU (Cerulean Blue Theme) ---
+const Color kPrimaryColor = Color(0xFF2E8EC7); 
+const Color kSecondaryColor = Color(0xFFE1F5FE); 
+const Color kAccentColor = Color(0xFFFFC107); 
+// [ĐÃ SỬA] Nền trang màu Trắng theo yêu cầu
+const Color kBgColor = Colors.white; 
+const Color kTextDark = Color(0xFF2D3436);
+const Color kTextGrey = Color(0xFF636E72);
+const Color kBorderColor = Color(0xFFE0E0E0); 
 
 enum TrendMode { week, month }
 
@@ -24,13 +26,13 @@ class HistoryExpensesPage extends StatefulWidget {
 
 class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
   List<Map<String, dynamic>> expenses = [];
-  List<Map<String, dynamic>> allExpenses = []; // Lưu toàn bộ chi tiêu
-  List<Map<String, dynamic>> vehicles = []; // Danh sách xe
+  List<Map<String, dynamic>> allExpenses = [];
+  List<Map<String, dynamic>> vehicles = [];
   bool loading = true;
   bool localeInitialized = false;
 
   TrendMode mode = TrendMode.week;
-  String? selectedVehicleId; // null = "Tất cả xe"
+  String? selectedVehicleId;
 
   @override
   void initState() {
@@ -41,89 +43,68 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
 
   Future<void> _initLocale() async {
     await initializeDateFormatting('vi_VN', null);
-    if (mounted) {
-      setState(() => localeInitialized = true);
-    }
+    if (mounted) setState(() => localeInitialized = true);
   }
 
   Future<void> _load() async {
     try {
       final userId = widget.user['user_id'].toString();
-      final data = await getUserExpenses(userId);
       final vehicleData = await getUserVehicles(userId);
+      final data = await getUserExpenses(userId);
 
       if (!mounted) return;
       setState(() {
         allExpenses = data;
         vehicles = vehicleData;
-        _filterExpenses(); // Lọc chi tiêu theo xe được chọn
+        _filterExpenses();
         loading = false;
       });
     } catch (e) {
-      debugPrint('Error loading expenses: $e');
-      if (mounted) {
-        setState(() {
-          loading = false;
-        });
-      }
+      if (mounted) setState(() => loading = false);
     }
   }
 
-  // Lọc chi tiêu theo xe được chọn
   void _filterExpenses() {
     if (selectedVehicleId == null) {
-      // Hiển thị tất cả
       expenses = allExpenses;
     } else {
-      // Lọc theo xe được chọn
       expenses = allExpenses
           .where((e) => e['vehicle_id'] == selectedVehicleId)
           .toList();
     }
   }
 
+  // --- ACTIONS ---
   void _showActionMenu(BuildContext context, Map<String, dynamic> expense) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.edit, color: kCyanDeep),
-              title: const Text('Chỉnh sửa chi tiêu'),
+              leading: const Icon(Icons.edit, color: kPrimaryColor),
+              title: const Text('Chỉnh sửa chi tiêu', style: TextStyle(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
                 _editExpense(expense);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete, color: kCyanDeep),
-              title: const Text('Xoá chi tiêu'),
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Xoá chi tiêu', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDelete(expense);
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -135,7 +116,6 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (_) => AddExpenseSheet(user: widget.user, expense: expense),
     );
     _load();
@@ -144,540 +124,123 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
   void _confirmDelete(Map<String, dynamic> expense) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: const Color(0xFFF0FBFF), // Light blue background
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(color: kBorderSoft),
-                ),
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: kCyanDeep,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Xoá chi tiêu?',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: kText,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bạn có chắc chắn muốn xoá khoản chi tiêu này không? Hành động này không thể hoàn tác.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: kSubText, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: const BorderSide(color: kBorderSoft),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Hủy',
-                        style: TextStyle(
-                          color: kSubText,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        final id = expense['expense_id'].toString();
-                        await deleteExpense(id);
-                        _load();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kCyanDeep,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Xoá',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text("Xác nhận xoá"),
+        content: const Text("Bạn có chắc chắn muốn xoá khoản chi này không?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
           ),
-        ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await deleteExpense(expense['expense_id'].toString());
+              _load();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Xoá", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
 
-  // --------- helpers ----------
-  final _money = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-
-  String _fmtMoney(int v) => _money.format(v).replaceAll('₫', 'đ');
-
-  DateTime? _parseDate(dynamic raw) {
-    if (raw == null) return null;
-    final s = raw.toString().trim();
-    // kỳ vọng DB lưu 'YYYY-MM-DD'
-    try {
-      return DateTime.parse(s);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  String _fmtDateLine(DateTime d) {
-    // dd/MM/yyyy
-    return DateFormat('d/M/yyyy', 'vi_VN').format(d);
-  }
-
-  String _monthHeader(DateTime d) => 'Tháng ${d.month}/${d.year}';
-
-  // Gom nhóm list theo tháng (giống ảnh)
-  // return: Map< "Tháng m/yyyy", List<expense> > theo thứ tự mới -> cũ
-  List<_MonthGroup> _groupByMonth(List<Map<String, dynamic>> items) {
-    final map = <String, List<Map<String, dynamic>>>{};
-
-    for (final e in items) {
-      final dt = _parseDate(e['expense_date']) ?? DateTime.now();
-      final key =
-          '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}';
-      map.putIfAbsent(key, () => []).add(e);
-    }
-
-    // sort month desc
-    final keys = map.keys.toList()..sort((a, b) => b.compareTo(a));
-
-    // sort item desc by date
-    final groups = <_MonthGroup>[];
-    for (final k in keys) {
-      final list = map[k]!
-        ..sort((a, b) {
-          final da = _parseDate(a['expense_date']) ?? DateTime(1970);
-          final db = _parseDate(b['expense_date']) ?? DateTime(1970);
-          return db.compareTo(da);
-        });
-
-      final parts = k.split('-'); // yyyy-mm
-      final dt = DateTime(int.parse(parts[0]), int.parse(parts[1]), 1);
-
-      groups.add(_MonthGroup(monthDate: dt, items: list));
-    }
-    return groups;
-  }
-
-  // --------- chart data ----------
-  // Mode tuần: 4 cột (tuần) gần nhất (hoặc ít hơn nếu không có data)
-  // Mode tháng: 4 cột (tháng) gần nhất
-  List<_TrendBar> _buildTrendBars(
-    List<Map<String, dynamic>> items,
-    TrendMode m,
-  ) {
+  // --- DATA PROCESSING ---
+  List<_TrendBar> _buildTrendBars(List<Map<String, dynamic>> items, TrendMode m) {
     if (items.isEmpty) return [];
-
-    // collect totals
     final totals = <String, int>{};
 
     for (final e in items) {
-      final dt = _parseDate(e['expense_date']);
-      if (dt == null) continue;
-      final amount = (e['amount'] ?? 0) is int
-          ? (e['amount'] as int)
-          : int.tryParse(e['amount'].toString()) ?? 0;
+      final dt = DateTime.tryParse(e['expense_date'].toString()) ?? DateTime.now();
+      final amount = int.tryParse(e['amount'].toString()) ?? 0;
 
       if (m == TrendMode.month) {
         final key = '${dt.year}-${dt.month.toString().padLeft(2, '0')}';
         totals[key] = (totals[key] ?? 0) + amount;
       } else {
-        // week key: yyyy-ww (ISO-ish simple)
         final wk = _weekNumber(dt);
         final key = '${dt.year}-W${wk.toString().padLeft(2, '0')}';
         totals[key] = (totals[key] ?? 0) + amount;
       }
     }
 
-    final keys = totals.keys.toList()
-      ..sort((a, b) => a.compareTo(b)); // tăng dần theo thời gian
-    // lấy 4 mốc gần nhất
-    final last = keys.length <= 4 ? keys : keys.sublist(keys.length - 4);
+    final keys = totals.keys.toList()..sort();
+    final last = keys.length <= 5 ? keys : keys.sublist(keys.length - 5);
 
     return last.map((k) {
       final v = totals[k] ?? 0;
-      final label = m == TrendMode.month
-          ? k.split('-')[1] // mm
-          : k.split('W').last; // ww
+      final label = m == TrendMode.month ? "T${k.split('-')[1]}" : k.split('W').last;
       return _TrendBar(label: label, value: v);
     }).toList();
   }
 
-  // tuần trong năm (đủ dùng cho biểu đồ trend)
   int _weekNumber(DateTime d) {
-    final dayOfYear = int.parse(DateFormat('D').format(d));
-    final w = ((dayOfYear - d.weekday + 10) / 7).floor();
-    return w < 1 ? 1 : w;
+    int dayOfYear = int.parse(DateFormat("D").format(d));
+    return ((dayOfYear - d.weekday + 10) / 7).floor();
+  }
+
+  double _calcMaxY(List<int> values) {
+    if (values.isEmpty) return 100000;
+    int maxV = values.reduce((a, b) => a > b ? a : b);
+    if (maxV == 0) return 100000;
+    return ((maxV * 1.2) / 100000).ceil() * 100000.0; 
+  }
+
+  List<_MonthGroup> _groupByMonth(List<Map<String, dynamic>> items) {
+    final map = <String, List<Map<String, dynamic>>>{};
+    for (final e in items) {
+      final dt = DateTime.tryParse(e['expense_date'].toString()) ?? DateTime.now();
+      final key = '${dt.year}-${dt.month}';
+      map.putIfAbsent(key, () => []).add(e);
+    }
+    final groups = <_MonthGroup>[];
+    map.forEach((k, v) {
+      final parts = k.split('-');
+      groups.add(_MonthGroup(
+        monthDate: DateTime(int.parse(parts[0]), int.parse(parts[1])),
+        items: v..sort((a, b) => (b['expense_date'] as String).compareTo(a['expense_date'] as String)),
+      ));
+    });
+    groups.sort((a, b) => b.monthDate.compareTo(a.monthDate));
+    return groups;
   }
 
   IconData _iconForCategory(String name) {
     final n = name.toLowerCase();
-    if (n.contains('lốp') || n.contains('vá')) {
-      return Icons.tire_repair;
-    }
-    if (n.contains('nhớt') || n.contains('dầu')) {
-      return Icons.oil_barrel;
-    }
-    if (n.contains('phanh') || n.contains('bố thắng')) {
-      return Icons.build_circle_outlined;
-    }
-    if (n.contains('rửa') || n.contains('vệ sinh')) {
-      return Icons.water_drop_outlined;
-    }
+    if (n.contains('lốp') || n.contains('vá')) return Icons.tire_repair;
+    if (n.contains('nhớt') || n.contains('dầu')) return Icons.oil_barrel;
+    if (n.contains('phanh') || n.contains('bố thắng')) return Icons.build_circle_outlined;
+    if (n.contains('rửa') || n.contains('vệ sinh')) return Icons.water_drop_outlined;
     return Icons.receipt_long;
   }
 
+  // --- UI BUILD ---
   @override
   Widget build(BuildContext context) {
-    if (!localeInitialized) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    if (!localeInitialized) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     final trendBars = _buildTrendBars(expenses, mode);
     final groups = _groupByMonth(expenses);
-    final maxY = _calcNiceMaxY(trendBars.map((e) => e.value).toList());
+    final maxY = _calcMaxY(trendBars.map((e) => e.value).toList());
 
     return Scaffold(
-      backgroundColor: kBg, // Nền sáng
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: loading
-            ? const Center(child: CircularProgressIndicator())
-            : CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 1. Header Đẹp
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: kCyanMain.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.bar_chart_rounded,
-                                  color: kCyanDeep,
-                                  size: 26,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Lịch sử chi tiêu',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: kText,
-                                  height: 1.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // 2. Xu hướng
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Xu hướng',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: kText,
-                                ),
-                              ),
-                              _TrendToggle(
-                                value: mode,
-                                onChanged: (v) => setState(() => mode = v),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // 3. Chart Container
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(16, 24, 20, 10),
-                            decoration: BoxDecoration(
-                              color: kCard,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: kBorderSoft),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                _TrendChart(bars: trendBars, maxY: maxY),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-
-                          // 4. Danh sách chi tiêu (Header)
-                          const Text(
-                            'Chi tiết',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: kText,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // 5. Dropdown chọn xe
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: kCard,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: kBorderSoft),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: kCyanMain.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.two_wheeler,
-                                    color: kCyanDeep,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String?>(
-                                      value: selectedVehicleId,
-                                      isExpanded: true,
-                                      dropdownColor: Colors
-                                          .white, // Nền trắng cho dropdown
-                                      icon: const Icon(
-                                        Icons.keyboard_arrow_down,
-                                        color: kCyanDeep,
-                                      ),
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: kText,
-                                      ),
-                                      items: [
-                                        // Tùy chọn "Tất cả xe"
-                                        const DropdownMenuItem<String?>(
-                                          value: null,
-                                          child: Text('📊 Tất cả xe'),
-                                        ),
-                                        // Danh sách xe
-                                        ...vehicles.map((v) {
-                                          final name = getVehicleDisplayName(v);
-                                          return DropdownMenuItem<String?>(
-                                            value: v['vehicle_id'].toString(),
-                                            child: Text('🏍️ $name'),
-                                          );
-                                        }),
-                                      ],
-                                      onChanged: (value) {
-                                        setState(() {
-                                          selectedVehicleId = value;
-                                          _filterExpenses();
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // 6. Hint Discovery
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF9E7), // Soft yellow
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFFFFECB3),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.lightbulb_outline,
-                                  color: Color(0xFFFFA000),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Text(
-                                    'Nhấn giữ vào chi tiêu để Chỉnh sửa hoặc Xoá',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF5D4037),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // 7. List Items (SliverList)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final g = groups[index];
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 12),
-                            // Month Divider
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: kCyanMain.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    _monthHeader(g.monthDate),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: kCyanDeep,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Container(
-                                    height: 1,
-                                    margin: const EdgeInsets.only(left: 10),
-                                    color: kCyanMain.withValues(alpha: 0.12),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Items in this month
-                            ...g.items.map((e) {
-                              final title =
-                                  (e['note']?.toString().trim().isNotEmpty ??
-                                      false)
-                                  ? e['note'].toString()
-                                  : e['category_name']?.toString() ??
-                                        'Chi tiêu';
-
-                              final categoryName =
-                                  e['category_name']?.toString() ?? 'Chi tiêu';
-                              final dt =
-                                  _parseDate(e['expense_date']) ??
-                                  DateTime.now();
-
-                              final place =
-                                  (e['location'] ?? e['garage_name'] ?? '')
-                                      .toString()
-                                      .trim();
-
-                              final amount = (e['amount'] ?? 0) is int
-                                  ? (e['amount'] as int)
-                                  : int.tryParse(e['amount'].toString()) ?? 0;
-
-                              return _ExpenseRow(
-                                icon: _iconForCategory(categoryName),
-                                title: title,
-                                subtitle: place.isEmpty
-                                    ? _fmtDateLine(dt)
-                                    : '${_fmtDateLine(dt)} • $place',
-                                amountText: '-${_fmtMoney(amount)}',
-                                chipText: categoryName,
-                                onLongPress: () => _showActionMenu(context, e),
-                              );
-                            }),
-                            const SizedBox(height: 8),
-                          ],
-                        );
-                      }, childCount: groups.length),
-                    ),
-                  ),
-                ],
-              ),
+      backgroundColor: kBgColor, // Nền Trắng
+      appBar: AppBar(
+        title: const Text(
+          "Lịch sử chi tiêu",
+          style: TextStyle(color: kTextDark, fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: kTextDark),
+        // Thêm đường kẻ mờ dưới AppBar cho tách biệt (giống Profile Page)
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: kBorderColor, height: 1),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -685,24 +248,354 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            barrierColor: Colors.black.withValues(alpha: 0.45),
             builder: (_) => AddExpenseSheet(user: widget.user),
           );
           _load();
         },
-        backgroundColor: const Color(0xFF86C3E6),
+        backgroundColor: kPrimaryColor,
+        elevation: 4,
         child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        color: kPrimaryColor,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- 1. DROPDOWN (Style Mới - Viền Xanh, Mũi tên Xanh) ---
+                    DropdownButtonFormField<String?>(
+                      value: selectedVehicleId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.fromLTRB(16, 12, 0, 12),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: kPrimaryColor, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: kPrimaryColor, width: 1.5),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        suffixIcon: Container(
+                          decoration: const BoxDecoration(
+                            color: kPrimaryColor,
+                            borderRadius: BorderRadius.only(
+                              topRight: Radius.circular(12),
+                              bottomRight: Radius.circular(12),
+                            ),
+                          ),
+                          child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                        ),
+                        suffixIconConstraints: const BoxConstraints(minWidth: 50, minHeight: 48),
+                      ),
+                      icon: const SizedBox.shrink(),
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: kTextDark),
+                      hint: const Text("Chọn xe để xem", style: TextStyle(color: kTextGrey, fontWeight: FontWeight.normal)),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('📊 Tất cả xe', style: TextStyle(fontWeight: FontWeight.bold, color: kTextDark)),
+                        ),
+                        ...vehicles.map((v) {
+                          final name = getVehicleDisplayName(v);
+                          return DropdownMenuItem<String?>(
+                            value: v['vehicle_id'].toString(),
+                            child: Text("🏍️ $name", style: const TextStyle(color: kTextDark)),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedVehicleId = value;
+                          _filterExpenses();
+                        });
+                      },
+                    ),
+                    
+                    const SizedBox(height: 24),
+
+                    // --- 2. BIỂU ĐỒ (ĐÃ SỬA: SỐ TIỀN TRỤC TRÁI + BỎ TEXT MÔ TẢ) ---
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: kBorderColor), // Thêm viền mờ cho nổi bật trên nền trắng
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "Xu hướng", 
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kTextDark)
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F3F4), // Nền xám nhạt cho toggle
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    _TrendButton("Tuần", mode == TrendMode.week, () => setState(() => mode = TrendMode.week)),
+                                    _TrendButton("Tháng", mode == TrendMode.month, () => setState(() => mode = TrendMode.month)),
+                                  ],
+                                ),
+                              )
+                            ],
+                          ),
+                          const SizedBox(height: 30),
+                          
+                          // THE CHART
+                          AspectRatio(
+                            aspectRatio: 1.6,
+                            child: trendBars.isEmpty 
+                              ? const Center(child: Text("Chưa có dữ liệu", style: TextStyle(color: kTextGrey)))
+                              : BarChart(
+                                BarChartData(
+                                  maxY: maxY,
+                                  barTouchData: BarTouchData(
+                                    touchTooltipData: BarTouchTooltipData(
+                                      getTooltipColor: (group) => kTextDark,
+                                      tooltipPadding: const EdgeInsets.all(8),
+                                      tooltipMargin: 8,
+                                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                        return BarTooltipItem(
+                                          '${NumberFormat.compact(locale: 'vi').format(rod.toY)}đ',
+                                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  gridData: FlGridData(
+                                    show: true,
+                                    drawVerticalLine: false,
+                                    horizontalInterval: maxY / 4,
+                                    getDrawingHorizontalLine: (value) => FlLine(
+                                      color: kBorderColor,
+                                      strokeWidth: 1,
+                                      dashArray: [5, 5],
+                                    ),
+                                  ),
+                                  borderData: FlBorderData(show: false),
+                                  titlesData: FlTitlesData(
+                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    // TRỤC TRÁI: HIỆN SỐ TIỀN
+                                    leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 40,
+                                        interval: maxY / 4,
+                                        getTitlesWidget: (v, meta) {
+                                          if (v == 0) return const SizedBox.shrink();
+                                          final label = NumberFormat.compact(locale: 'vi').format(v);
+                                          return Padding(
+                                            padding: const EdgeInsets.only(right: 6),
+                                            child: Text(
+                                              label,
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Color(0xFFAAAAAA),
+                                                fontWeight: FontWeight.bold
+                                              ),
+                                              textAlign: TextAlign.right,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        getTitlesWidget: (v, meta) {
+                                          if (v.toInt() >= 0 && v.toInt() < trendBars.length) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(top: 10.0),
+                                              child: Text(
+                                                trendBars[v.toInt()].label, 
+                                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: kTextGrey)
+                                              ),
+                                            );
+                                          }
+                                          return const Text('');
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  barGroups: trendBars.asMap().entries.map((e) {
+                                    final isMax = e.value.value.toDouble() == trendBars.map((b)=>b.value).reduce((a,b)=>a>b?a:b).toDouble();
+                                    return BarChartGroupData(
+                                      x: e.key,
+                                      barRods: [
+                                        BarChartRodData(
+                                          toY: e.value.value.toDouble(),
+                                          color: isMax ? kAccentColor : kPrimaryColor, 
+                                          width: 18,
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                          backDrawRodData: BackgroundBarChartRodData(
+                                            show: true,
+                                            toY: maxY,
+                                            color: const Color(0xFFF1F3F4), // Nền cột mờ
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 3. List Expenses
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final g = groups[index];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_month, size: 16, color: kPrimaryColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Tháng ${g.monthDate.month}/${g.monthDate.year}",
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 14),
+                            ),
+                            const Expanded(child: Divider(indent: 10, color: kBorderColor)),
+                          ],
+                        ),
+                      ),
+                      ...g.items.map((e) => _ExpenseCard(
+                        item: e, 
+                        onLongPress: () => _showActionMenu(context, e)
+                      )),
+                    ],
+                  );
+                }, childCount: groups.length),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
 
-  static double _calcNiceMaxY(List<int> values) {
-    if (values.isEmpty) return 100000;
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    if (maxV <= 0) return 100000;
-    final step = 50000;
-    final rounded = ((maxV + step - 1) ~/ step) * step;
-    return rounded.toDouble();
+// --- SUB WIDGETS ---
+
+class _TrendButton extends StatelessWidget {
+  final String text;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _TrendButton(this.text, this.isSelected, this.onTap);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? kPrimaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 13, 
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : kTextGrey,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpenseCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback onLongPress;
+  const _ExpenseCard({required this.item, required this.onLongPress});
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = int.tryParse(item['amount'].toString()) ?? 0;
+    final formatter = NumberFormat('#,###', 'vi_VN');
+    final note = item['note'] ?? item['category_name'];
+    final dateStr = item['expense_date'].toString().split('T')[0];
+    final parts = dateStr.split('-');
+    final displayDate = "${parts[2]}/${parts[1]}";
+
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: kBorderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: kSecondaryColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.receipt_long, color: kPrimaryColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(note, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kTextDark)),
+                  const SizedBox(height: 4),
+                  Text(item['garage_name'] ?? 'Không rõ địa điểm', style: const TextStyle(color: kTextGrey, fontSize: 13)),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text("-${formatter.format(amount)}đ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.redAccent)),
+                const SizedBox(height: 4),
+                Text(displayDate, style: const TextStyle(color: kTextGrey, fontSize: 12)),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -713,324 +606,9 @@ class _MonthGroup {
 }
 
 class _TrendBar {
-  final String label; // "13, 14" hoặc "09,10"
-  final int value; // tổng tiền
+  final String label;
+  final int value;
   _TrendBar({required this.label, required this.value});
-}
-
-class _TrendToggle extends StatelessWidget {
-  final TrendMode value;
-  final ValueChanged<TrendMode> onChanged;
-
-  const _TrendToggle({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final isWeek = value == TrendMode.week;
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kBorderSoft),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _TogglePill(
-            text: 'Tuần',
-            selected: isWeek,
-            onTap: () => onChanged(TrendMode.week),
-          ),
-          _TogglePill(
-            text: 'Tháng',
-            selected: !isWeek,
-            onTap: () => onChanged(TrendMode.month),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TogglePill extends StatelessWidget {
-  final String text;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TogglePill({
-    required this.text,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? kCyanMain : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: selected ? Colors.white : kSubText,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TrendChart extends StatelessWidget {
-  final List<_TrendBar> bars;
-  final double maxY;
-
-  const _TrendChart({required this.bars, required this.maxY});
-
-  @override
-  Widget build(BuildContext context) {
-    if (bars.isEmpty) {
-      return Container(
-        height: 170,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: const Color(0xFFF6F8FA),
-        ),
-        child: const Text('Chưa có dữ liệu để vẽ biểu đồ'),
-      );
-    }
-
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-      ),
-      child: BarChart(
-        BarChartData(
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxY / 3,
-            getDrawingHorizontalLine: (value) => FlLine(
-              strokeWidth: 1,
-              color: const Color(0xFFEEEEEE),
-              dashArray: [4, 4],
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: const Border(
-              left: BorderSide(color: Color(0xFFBDBDBD)),
-              bottom: BorderSide(color: Color(0xFFBDBDBD)),
-            ),
-          ),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 54,
-                interval: maxY / 3,
-                getTitlesWidget: (v, meta) {
-                  final label = NumberFormat.compact(locale: 'vi_VN').format(v);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text(
-                      '$labelđ',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFFAAAAAA),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (v, meta) {
-                  final i = v.toInt();
-                  if (i < 0 || i >= bars.length) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      bars[i].label,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          barGroups: List.generate(bars.length, (i) {
-            final isLast = i == bars.length - 1;
-            return BarChartGroupData(
-              x: i,
-              barsSpace: 6,
-              barRods: [
-                BarChartRodData(
-                  toY: bars[i].value.toDouble(),
-                  width: 22,
-                  borderRadius: BorderRadius.circular(2),
-                  color: isLast
-                      ? const Color(0xFFFBC71C)
-                      : kCyanMain.withValues(alpha: 0.5),
-                ),
-              ],
-            );
-          }),
-        ),
-      ),
-    );
-  }
-}
-
-class _ExpenseRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String amountText;
-  final String chipText;
-  final VoidCallback? onLongPress;
-
-  const _ExpenseRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.amountText,
-    required this.chipText,
-    this.onLongPress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: kCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: kBorderSoft, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: kCyanMain.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: kCyanDeep, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w700,
-                            color: kText,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        amountText,
-                        style: const TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: kText,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: kSubText,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (chipText.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: kCyanMain.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: kCyanMain.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Text(
-                            chipText,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: kCyanDeep,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class AddExpenseSheet extends StatefulWidget {
@@ -1053,7 +631,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   String? _vehicleId;
   int? _categoryId;
-  String? _selectedCategoryName; // Track category name for dropdown
+  String? _selectedCategoryName; 
   String? _selectedGarageId;
   bool _isOtherGarage = false;
   DateTime _date = DateTime.now();
@@ -1192,10 +770,11 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    const primary = Color(0xFF59CBEF);
-    const border = Color(0xFFBFE3F7);
-    const textSoft = Color(0xFF6B7280);
-    const sheetBg = Color(0xFFF7FBFE);
+    const primary = kPrimaryColor;
+    const border = Color(0xFFE0E0E0);
+    const textSoft = Color(0xFF636E72);
+    // [FIX] Nền Sheet màu trắng
+    const sheetBg = Colors.white;
 
     InputDecoration deco(String label) {
       return InputDecoration(
@@ -1279,9 +858,9 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 const SizedBox(height: 12),
                 if (!_isOtherGarage)
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedGarageId,
+                    value: _selectedGarageId,
                     hint: const Text(
-                      'Chọn cửa hàng từ danh sách...',
+                      'Chọn cửa hàng...',
                       style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
                     ),
                     items: [
@@ -1360,7 +939,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _vehicleId, // Use initialValue instead of value
+                  value: _vehicleId,
                   items: vehicles
                       .map(
                         (v) => DropdownMenuItem(
@@ -1379,7 +958,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedCategoryName,
+                  value: _selectedCategoryName,
                   hint: const Text(
                     'Chọn nhóm chi tiêu...',
                     style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
