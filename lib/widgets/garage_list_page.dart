@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:url_launcher/url_launcher.dart'; 
-import '../../helpers/utils.dart'; 
+import 'package:url_launcher/url_launcher.dart';
+import '../../helpers/utils.dart';
 
 class GarageListPage extends StatefulWidget {
-  const GarageListPage({super.key});
+  final Map<String, dynamic> user;
+  const GarageListPage({super.key, required this.user});
 
   @override
   State<GarageListPage> createState() => _GarageListPageState();
@@ -20,7 +21,7 @@ class _GarageListPageState extends State<GarageListPage> {
   @override
   void initState() {
     super.initState();
-    _initData(); 
+    _initData();
   }
 
   // === 1. CÁC HÀM LOGIC DATA  ===
@@ -29,8 +30,11 @@ class _GarageListPageState extends State<GarageListPage> {
       // 1. Cố gắng lấy vị trí thật
       Position position = await _determinePosition();
       // 2. Lấy data và tính khoảng cách
-      final data = await getNearestGarages(position.latitude, position.longitude);
-      
+      final data = await getNearestGarages(
+        position.latitude,
+        position.longitude,
+      );
+
       if (mounted) {
         setState(() {
           _garages = data;
@@ -41,7 +45,7 @@ class _GarageListPageState extends State<GarageListPage> {
       // FALLBACK: Nếu lỗi GPS thì dùng toạ độ mặc định Quận 10
       print("Lỗi GPS: $e -> Dùng toạ độ mặc định Quận 10");
       final data = await getNearestGarages(10.771450, 106.666980);
-      
+
       if (mounted) {
         setState(() {
           _garages = data;
@@ -67,17 +71,17 @@ class _GarageListPageState extends State<GarageListPage> {
         return Future.error('Location permissions are denied');
       }
     }
-    
+
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.medium,
-      timeLimit: const Duration(seconds: 5), 
+      timeLimit: const Duration(seconds: 5),
     );
   }
 
   // === 2. HÀM HIỆN POPUP GỌI ĐIỆN ===
   void _showCallPopup(String? phone) {
     if (phone == null || phone.isEmpty) return;
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -98,8 +102,11 @@ class _GarageListPageState extends State<GarageListPage> {
             },
             icon: const Icon(Icons.call),
             label: const Text("Gọi ngay"),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-          )
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
         ],
       ),
     );
@@ -109,8 +116,12 @@ class _GarageListPageState extends State<GarageListPage> {
   List<Map<String, dynamic>> get _filteredGarages {
     if (_searchKeyword.isEmpty) return _garages;
     return _garages.where((g) {
-      return g['name'].toString().toLowerCase().contains(_searchKeyword.toLowerCase()) ||
-             g['address'].toString().toLowerCase().contains(_searchKeyword.toLowerCase());
+      return g['name'].toString().toLowerCase().contains(
+            _searchKeyword.toLowerCase(),
+          ) ||
+          g['address'].toString().toLowerCase().contains(
+            _searchKeyword.toLowerCase(),
+          );
     }).toList();
   }
 
@@ -129,7 +140,7 @@ class _GarageListPageState extends State<GarageListPage> {
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.grey.shade300)
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -164,7 +175,10 @@ class _GarageListPageState extends State<GarageListPage> {
 
   Widget _buildGarageCard(Map<String, dynamic> garage) {
     return GestureDetector(
-      onTap: () => context.push('/garage/detail', extra: garage),
+      onTap: () => context.push(
+        '/garage/detail',
+        extra: {'garage': garage, 'user': widget.user},
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
@@ -173,7 +187,11 @@ class _GarageListPageState extends State<GarageListPage> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Row(
@@ -183,16 +201,24 @@ class _GarageListPageState extends State<GarageListPage> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                width: 90, height: 90, // Khung ảnh vuông cố định
+                width: 90,
+                height: 90, // Khung ảnh vuông cố định
                 color: Colors.grey[100],
                 child: garage['image'].toString().startsWith('http')
-                  ? Image.network(garage['image'], fit: BoxFit.cover) // Ảnh mạng -> Cắt đầy khung (Cover)
-                  : Image.asset(garage['image'] ?? 'images/garage.png', fit: BoxFit.cover, 
-                      errorBuilder: (_,__,___)=> const Icon(Icons.store, color: Colors.grey)), 
+                    ? Image.network(
+                        garage['image'],
+                        fit: BoxFit.cover,
+                      ) // Ảnh mạng -> Cắt đầy khung (Cover)
+                    : Image.asset(
+                        garage['image'] ?? 'images/garage.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.store, color: Colors.grey),
+                      ),
               ),
             ),
             const SizedBox(width: 12),
-            
+
             // THÔNG TIN BÊN PHẢI
             Expanded(
               child: Column(
@@ -205,43 +231,82 @@ class _GarageListPageState extends State<GarageListPage> {
                       Expanded(
                         child: Text(
                           garage['name'],
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.amber[50], borderRadius: BorderRadius.circular(4)),
-                        child: Row(children: [
-                          Text("${garage['rating']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                          const SizedBox(width: 2),
-                          const Icon(Icons.star, color: Colors.amber, size: 12),
-                        ]),
-                      )
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber[50],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              "${garage['rating']}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 12,
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text("${garage['distance']} km từ bạn", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  
+                  Text(
+                    "${garage['distance']} km từ bạn",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+
                   const SizedBox(height: 8),
 
                   // NÚT GỌI & ĐẶT LỊCH (Style mới)
                   Row(
                     children: [
-                      Expanded(child: InkWell(
-                        onTap: () => _showCallPopup(garage['phone']),
-                        child: _actionButton(Icons.call, "Gọi điện", const Color(0xFFA5D6A7), Colors.green.shade800),
-                      )),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _showCallPopup(garage['phone']),
+                          child: _actionButton(
+                            Icons.call,
+                            "Gọi điện",
+                            const Color(0xFFA5D6A7),
+                            Colors.green.shade800,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(child: InkWell(
-                        onTap: () {}, // Logic đặt lịch
-                        child: _actionButton(Icons.calendar_today, "Đặt lịch", const Color(0xFF90CAF9), Colors.blue.shade800),
-                      )),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {}, // Logic đặt lịch
+                          child: _actionButton(
+                            Icons.calendar_today,
+                            "Đặt lịch",
+                            const Color(0xFF90CAF9),
+                            Colors.blue.shade800,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -249,7 +314,12 @@ class _GarageListPageState extends State<GarageListPage> {
   }
 
   // Widget nút bấm nhỏ dùng chung
-  Widget _actionButton(IconData icon, String label, Color bgColor, Color textColor) {
+  Widget _actionButton(
+    IconData icon,
+    String label,
+    Color bgColor,
+    Color textColor,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
@@ -261,7 +331,14 @@ class _GarageListPageState extends State<GarageListPage> {
         children: [
           Icon(icon, size: 14, color: textColor),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
         ],
       ),
     );

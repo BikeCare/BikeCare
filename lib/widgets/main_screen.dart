@@ -33,10 +33,24 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
       ),
-      const GaragePage(),
-      const GarageListPage(), // Tab 2: Tìm kiếm
+      GaragePage(
+        user: widget.user,
+        onSwitchTab: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ), // Pass user parameter and callback
+      GarageListPage(user: widget.user), // Tab 2: Tìm kiếm
       HistoryExpensesPage(user: widget.user), // Tab 3: Lịch sử
-      UserProfilePage(user: widget.user), // Tab 4: Thông tin
+      UserProfilePage(
+        user: widget.user,
+        onSwitchTab: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ), // Tab 4: Thông tin
     ];
   }
 

@@ -24,10 +24,13 @@ class HistoryExpensesPage extends StatefulWidget {
 
 class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
   List<Map<String, dynamic>> expenses = [];
+  List<Map<String, dynamic>> allExpenses = []; // Lưu toàn bộ chi tiêu
+  List<Map<String, dynamic>> vehicles = []; // Danh sách xe
   bool loading = true;
   bool localeInitialized = false;
 
   TrendMode mode = TrendMode.week;
+  String? selectedVehicleId; // null = "Tất cả xe"
 
   @override
   void initState() {
@@ -47,9 +50,13 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
     try {
       final userId = widget.user['user_id'].toString();
       final data = await getUserExpenses(userId);
+      final vehicleData = await getUserVehicles(userId);
+
       if (!mounted) return;
       setState(() {
-        expenses = data;
+        allExpenses = data;
+        vehicles = vehicleData;
+        _filterExpenses(); // Lọc chi tiêu theo xe được chọn
         loading = false;
       });
     } catch (e) {
@@ -59,6 +66,19 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
           loading = false;
         });
       }
+    }
+  }
+
+  // Lọc chi tiêu theo xe được chọn
+  void _filterExpenses() {
+    if (selectedVehicleId == null) {
+      // Hiển thị tất cả
+      expenses = allExpenses;
+    } else {
+      // Lọc theo xe được chọn
+      expenses = allExpenses
+          .where((e) => e['vehicle_id'] == selectedVehicleId)
+          .toList();
     }
   }
 
@@ -115,7 +135,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.45),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (_) => AddExpenseSheet(user: widget.user, expense: expense),
     );
     _load();
@@ -139,7 +159,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -379,7 +399,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: kCyanMain.withOpacity(0.12),
+                                  color: kCyanMain.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -431,7 +451,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                               border: Border.all(color: kBorderSoft),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
+                                  color: Colors.black.withValues(alpha: 0.04),
                                   blurRadius: 18,
                                   offset: const Offset(0, 10),
                                 ),
@@ -456,7 +476,85 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                           ),
                           const SizedBox(height: 12),
 
-                          // 5. Hint Discovery
+                          // 5. Dropdown chọn xe
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: kCard,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: kBorderSoft),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: kCyanMain.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.two_wheeler,
+                                    color: kCyanDeep,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String?>(
+                                      value: selectedVehicleId,
+                                      isExpanded: true,
+                                      dropdownColor: Colors
+                                          .white, // Nền trắng cho dropdown
+                                      icon: const Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: kCyanDeep,
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: kText,
+                                      ),
+                                      items: [
+                                        // Tùy chọn "Tất cả xe"
+                                        const DropdownMenuItem<String?>(
+                                          value: null,
+                                          child: Text('📊 Tất cả xe'),
+                                        ),
+                                        // Danh sách xe
+                                        ...vehicles.map((v) {
+                                          final name = getVehicleDisplayName(v);
+                                          return DropdownMenuItem<String?>(
+                                            value: v['vehicle_id'].toString(),
+                                            child: Text('🏍️ $name'),
+                                          );
+                                        }),
+                                      ],
+                                      onChanged: (value) {
+                                        setState(() {
+                                          selectedVehicleId = value;
+                                          _filterExpenses();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // 6. Hint Discovery
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -495,7 +593,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                     ),
                   ),
 
-                  // 6. List Items (SliverList)
+                  // 7. List Items (SliverList)
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
                     sliver: SliverList(
@@ -514,7 +612,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: kCyanMain.withOpacity(0.12),
+                                    color: kCyanMain.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -530,7 +628,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
                                   child: Container(
                                     height: 1,
                                     margin: const EdgeInsets.only(left: 10),
-                                    color: kCyanMain.withOpacity(0.12),
+                                    color: kCyanMain.withValues(alpha: 0.12),
                                   ),
                                 ),
                               ],
@@ -587,7 +685,7 @@ class _HistoryExpensesPageState extends State<HistoryExpensesPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            barrierColor: Colors.black.withOpacity(0.45),
+            barrierColor: Colors.black.withValues(alpha: 0.45),
             builder: (_) => AddExpenseSheet(user: widget.user),
           );
           _load();
@@ -794,7 +892,7 @@ class _TrendChart extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                   color: isLast
                       ? const Color(0xFFFBC71C)
-                      : kCyanMain.withOpacity(0.5),
+                      : kCyanMain.withValues(alpha: 0.5),
                 ),
               ],
             );
@@ -836,7 +934,7 @@ class _ExpenseRow extends StatelessWidget {
           border: Border.all(color: kBorderSoft, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -849,7 +947,7 @@ class _ExpenseRow extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: kCyanMain.withOpacity(0.12),
+                color: kCyanMain.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: kCyanDeep, size: 22),
@@ -907,10 +1005,10 @@ class _ExpenseRow extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: kCyanMain.withOpacity(0.08),
+                            color: kCyanMain.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: kCyanMain.withOpacity(0.2),
+                              color: kCyanMain.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Text(
@@ -955,6 +1053,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   String? _vehicleId;
   int? _categoryId;
+  String? _selectedCategoryName; // Track category name for dropdown
   String? _selectedGarageId;
   bool _isOtherGarage = false;
   DateTime _date = DateTime.now();
@@ -1004,7 +1103,10 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             ? vehicles.first['vehicle_id'].toString()
             : null;
         _categoryId = categories.isNotEmpty
-            ? categories.first['category_id'] as int
+            ? categories.first['category_id'] as int?
+            : null;
+        _selectedCategoryName = categories.isNotEmpty
+            ? categories.first['category_name']?.toString()
             : null;
       }
     });
@@ -1025,6 +1127,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
 
   Future<void> _save() async {
     final amount = int.tryParse(_amountCtl.text.trim());
+
     if (_vehicleId == null ||
         _categoryId == null ||
         amount == null ||
@@ -1176,7 +1279,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                 const SizedBox(height: 12),
                 if (!_isOtherGarage)
                   DropdownButtonFormField<String>(
-                    value: _selectedGarageId,
+                    initialValue: _selectedGarageId,
                     hint: const Text(
                       'Chọn cửa hàng từ danh sách...',
                       style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
@@ -1257,13 +1360,13 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _vehicleId,
+                  initialValue: _vehicleId, // Use initialValue instead of value
                   items: vehicles
                       .map(
                         (v) => DropdownMenuItem(
                           value: v['vehicle_id'].toString(),
                           child: Text(
-                            getVehicleDisplayName(v),
+                            v['vehicle_name']?.toString() ?? 'Xe chưa đặt tên',
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
@@ -1275,12 +1378,16 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                   dropdownColor: Colors.white,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  value: _categoryId,
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedCategoryName,
+                  hint: const Text(
+                    'Chọn nhóm chi tiêu...',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                  ),
                   items: categories
                       .map(
                         (c) => DropdownMenuItem(
-                          value: c['category_id'] as int,
+                          value: c['category_name'].toString(),
                           child: Text(
                             c['category_name'].toString(),
                             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -1288,7 +1395,16 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                         ),
                       )
                       .toList(),
-                  onChanged: (v) => setState(() => _categoryId = v),
+                  onChanged: (v) {
+                    final cat = categories.firstWhere(
+                      (c) => c['category_name'] == v,
+                      orElse: () => {},
+                    );
+                    setState(() {
+                      _selectedCategoryName = v;
+                      _categoryId = cat['category_id'] as int?;
+                    });
+                  },
                   decoration: deco('Nhóm chi tiêu'),
                   icon: const Icon(Icons.expand_more),
                   dropdownColor: Colors.white,
@@ -1339,6 +1455,27 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                               firstDate: DateTime(2020),
                               lastDate: DateTime(2035),
                               initialDate: _date,
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: const ColorScheme.light(
+                                      primary: Color(0xFF2E8EC7),
+                                      onPrimary: Colors.white,
+                                      surface: Colors.white,
+                                      onSurface: Colors.black87,
+                                    ),
+                                    dialogBackgroundColor: Colors.white,
+                                    textButtonTheme: TextButtonThemeData(
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(
+                                          0xFF2E8EC7,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
                             );
                             if (picked != null) setState(() => _date = picked);
                           },

@@ -19,7 +19,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  
   /* ================= STATE ================= */
   late final String userId;
 
@@ -66,7 +65,6 @@ class _HomePageState extends State<HomePage> {
               _buildHeader(),
               _buildMonthlyExpense(),
               _buildUtilities(),
-
             ],
           ),
         ),
@@ -78,103 +76,97 @@ class _HomePageState extends State<HomePage> {
    * HEADER
    * ========================================================= */
   Widget _buildHeader() {
-  return Container(
-    padding: const EdgeInsets.all(20),
-    color: const Color(0xFF4F6472),
-    child: Row(
-      children: [
-        Expanded(
-          flex: 6, // 👈 70%
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Xin chào, ${getLastName(widget.user['full_name'])}!',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      color: const Color(0xFF4F6472),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 6, // 👈 70%
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Xin chào, ${getLastName(widget.user['full_name'])}!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '$city, $currentDate',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  '$city, $currentDate',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 4, // 👈 30%
-          child: _buildNearestGarage(),
-        ),
-      ],
-    ),
-  );
-}
-
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 4, // 👈 30%
+            child: _buildNearestGarage(),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildNearestGarage() {
-  return AspectRatio(
-    aspectRatio: 1.9, // 👈 giữ hình đẹp & không tràn
-    child: Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: const DecorationImage(
-          image: AssetImage('images/map.png'),
-          fit: BoxFit.contain,
-        ),
-      ),
-      child: Stack(
-  children: [
-    Positioned(
-      top: 6,
-      right: 0,
+    return AspectRatio(
+      aspectRatio: 1.9, // 👈 giữ hình đẹp & không tràn
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
+          image: const DecorationImage(
+            image: AssetImage('images/map.png'),
+            fit: BoxFit.contain,
+          ),
         ),
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Stack(
           children: [
-            Text(
-              'Gara gần nhất',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 9,
-              ),
-            ),
-            SizedBox(height: 1),
-            Text(
-              '300m',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+            Positioned(
+              top: 6,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Gara gần nhất',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white70, fontSize: 9),
+                    ),
+                    SizedBox(height: 1),
+                    Text(
+                      '300m',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-    ),
-  ],
-),
-
-    ),
-  );
-}
-
+    );
+  }
 
   /* =========================================================
    * MONTHLY EXPENSE
@@ -365,7 +357,7 @@ class _HomePageState extends State<HomePage> {
                 'images/garage.png',
                 'Gara \n yêu thích',
                 imageSize: 52,
-                onTap: () => context.push('/favorites'),
+                onTap: () => context.push('/favorites', extra: widget.user),
               ),
             ),
           ],
@@ -456,25 +448,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<String> _getCityName(Position position) async {
-  final placemarks = await placemarkFromCoordinates(
-    position.latitude,
-    position.longitude,
-  );
+    final placemarks = await placemarkFromCoordinates(
+      position.latitude,
+      position.longitude,
+    );
 
-  if (placemarks.isEmpty) return 'Unknown';
+    if (placemarks.isEmpty) return 'Unknown';
 
-  final p = placemarks.first;
+    final p = placemarks.first;
 
-  // DEBUG (có thể xóa sau)
-  debugPrint('Placemark: $p');
+    // DEBUG (có thể xóa sau)
+    debugPrint('Placemark: $p');
 
-  // Ưu tiên field hay có ở Việt Nam
-  return p.administrativeArea ??       // TP.HCM, Hà Nội
-         p.subAdministrativeArea ??    // Quận / Huyện
-         p.locality ??                 // Phường / Xã (hay null)
-         p.country ??                  // Vietnam
-         'Unknown';
-}
+    // Ưu tiên field hay có ở Việt Nam
+    return p.administrativeArea ?? // TP.HCM, Hà Nội
+        p.subAdministrativeArea ?? // Quận / Huyện
+        p.locality ?? // Phường / Xã (hay null)
+        p.country ?? // Vietnam
+        'Unknown';
+  }
 
   /* =========================================================
    * EMERGENCY

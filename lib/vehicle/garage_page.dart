@@ -5,7 +5,14 @@ import 'package:intl/intl.dart';
 import '../../helpers/utils.dart'; // Để lấy list xe từ DB
 
 class GaragePage extends StatefulWidget {
-  const GaragePage({super.key});
+  final Map<String, dynamic> user;
+  final Function(int)? onSwitchTab; // Add callback for tab switching
+
+  const GaragePage({
+    super.key,
+    required this.user,
+    this.onSwitchTab, // Optional callback
+  });
 
   @override
   State<GaragePage> createState() => _GaragePageState();
@@ -18,7 +25,7 @@ class _GaragePageState extends State<GaragePage> {
   int _selectedIndex = 0; // Card đang được chọn
   List<Map<String, dynamic>> _vehicles = [];
   bool _isLoading = true;
-  final String _userId = "user_001"; // ID giả định
+  late final String _userId; // Will be initialized from widget.user
 
   // Recent repairs state
   List<Map<String, dynamic>> _recentRepairs = [];
@@ -27,6 +34,7 @@ class _GaragePageState extends State<GaragePage> {
   @override
   void initState() {
     super.initState();
+    _userId = widget.user['user_id'] as String; // Get from logged-in user
     _loadVehicles();
     _loadRecentRepairs();
   }
@@ -57,11 +65,13 @@ class _GaragePageState extends State<GaragePage> {
     try {
       // Lấy vehicle_id của xe đang chọn
       final vehicleId = _vehicles[_selectedIndex]['vehicle_id'].toString();
+
       final data = await getRecentRepairsByVehicle(
         userId: _userId,
         vehicleId: vehicleId,
         limit: 2,
       );
+
       if (mounted) {
         setState(() {
           _recentRepairs = data;
@@ -239,7 +249,10 @@ class _GaragePageState extends State<GaragePage> {
         // === SỬA ĐOẠN NÀY ===
         // Dùng context.push của GoRouter thay vì Navigator.push
         // Chờ kết quả trả về (true nếu thêm thành công)
-        final result = await context.push<bool>('/add-vehicle');
+        final result = await context.push<bool>(
+          '/add-vehicle',
+          extra: widget.user,
+        );
 
         if (result == true) {
           _loadVehicles(); // Reload lại danh sách xe nếu có xe mới
@@ -294,7 +307,7 @@ class _GaragePageState extends State<GaragePage> {
             Image.asset(
               'images/motorbike.png',
               height: 100,
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -382,7 +395,13 @@ class _GaragePageState extends State<GaragePage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
-            const Icon(Icons.arrow_forward, color: Colors.grey),
+            GestureDetector(
+              onTap: () {
+                // Navigate to Lịch sử tab (index 3)
+                widget.onSwitchTab?.call(3);
+              },
+              child: const Icon(Icons.arrow_forward, color: Colors.grey),
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -422,22 +441,31 @@ class _GaragePageState extends State<GaragePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text("$shop", style: const TextStyle(color: Colors.black87)),
-              Text(
-                date,
-                style: const TextStyle(color: Colors.blue, fontSize: 12),
-              ),
-            ],
+                Text(
+                  shop,
+                  style: const TextStyle(color: Colors.black87),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  date,
+                  style: const TextStyle(color: Colors.blue, fontSize: 12),
+                ),
+              ],
+            ),
           ),
           Text(
             price,

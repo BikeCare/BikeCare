@@ -3,7 +3,8 @@ import 'package:intl/intl.dart';
 import '../../helpers/utils.dart'; // Import utils để gọi hàm lưu DB
 
 class AddVehiclePage extends StatefulWidget {
-  const AddVehiclePage({super.key});
+  final Map<String, dynamic> user;
+  const AddVehiclePage({super.key, required this.user});
 
   @override
   State<AddVehiclePage> createState() => _AddVehiclePageState();
@@ -11,18 +12,23 @@ class AddVehiclePage extends StatefulWidget {
 
 class _AddVehiclePageState extends State<AddVehiclePage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _plateController = TextEditingController();
-  
+
   String _selectedType = '<175cc'; // Default
   DateTime? _warrantyStart;
   DateTime? _warrantyEnd;
-  
-  // Giả lập User ID (Sau này lấy từ Login)
-  final String _userId = "user_001";
+
+  late final String _userId; // Will be initialized from widget.user
+
+  @override
+  void initState() {
+    super.initState();
+    _userId = widget.user['user_id'] as String;
+  }
 
   Future<void> _pickDate(bool isStart) async {
     final picked = await showDatePicker(
@@ -33,8 +39,11 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _warrantyStart = picked;
-        else _warrantyEnd = picked;
+        if (isStart) {
+          _warrantyStart = picked;
+        } else {
+          _warrantyEnd = picked;
+        }
       });
     }
   }
@@ -46,18 +55,20 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         userId: _userId,
         brand: _brandController.text,
         vehicleType: _selectedType,
-        
+
         // --- THÊM CÁC DÒNG NÀY ---
         name: _nameController.text,
         licensePlate: _plateController.text,
-        warrantyStart: _warrantyStart != null ? _warrantyStart!.toIso8601String() : null,
-        warrantyEnd: _warrantyEnd != null ? _warrantyEnd!.toIso8601String() : null,
+        warrantyStart: _warrantyStart?.toIso8601String(),
+        warrantyEnd: _warrantyEnd?.toIso8601String(),
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Thêm xe thành công!")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Thêm xe thành công!")));
         // Trả về true để trang Garage biết mà reload lại danh sách
-        Navigator.pop(context, true); 
+        Navigator.pop(context, true);
       }
     }
   }
@@ -66,7 +77,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Thêm xe mới", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Thêm xe mới",
+          style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -84,13 +98,30 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               _buildInput("Tên gợi nhớ (VD: Xe đi làm)", _nameController),
               _buildInput("Hãng xe (VD: Honda Vision)", _brandController),
               _buildInput("Biển số xe", _plateController),
-              
+
               const SizedBox(height: 16),
-              const Text("Loại xe", style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                "Loại xe",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               Row(
                 children: [
-                  Expanded(child: RadioListTile(title: const Text("<175cc"), value: "<175cc", groupValue: _selectedType, onChanged: (v)=>setState(()=>_selectedType=v!))),
-                  Expanded(child: RadioListTile(title: const Text(">175cc"), value: ">175cc", groupValue: _selectedType, onChanged: (v)=>setState(()=>_selectedType=v!))),
+                  Expanded(
+                    child: RadioListTile(
+                      title: const Text("<175cc"),
+                      value: "<175cc",
+                      groupValue: _selectedType,
+                      onChanged: (v) => setState(() => _selectedType = v!),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile(
+                      title: const Text(">175cc"),
+                      value: ">175cc",
+                      groupValue: _selectedType,
+                      onChanged: (v) => setState(() => _selectedType = v!),
+                    ),
+                  ),
                 ],
               ),
 
@@ -98,9 +129,13 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
               _buildHeader("Thời hạn bảo hành"),
               Row(
                 children: [
-                  Expanded(child: _buildDatePicker("Bắt đầu", _warrantyStart, true)),
+                  Expanded(
+                    child: _buildDatePicker("Bắt đầu", _warrantyStart, true),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: _buildDatePicker("Kết thúc", _warrantyEnd, false)),
+                  Expanded(
+                    child: _buildDatePicker("Kết thúc", _warrantyEnd, false),
+                  ),
                 ],
               ),
 
@@ -111,12 +146,23 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
                 child: ElevatedButton(
                   onPressed: _saveVehicle,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF59CBEF), // Màu xanh giống design Booking
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    backgroundColor: const Color(
+                      0xFF59CBEF,
+                    ), // Màu xanh giống design Booking
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text("Lưu thông tin", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text(
+                    "Lưu thông tin",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -127,7 +173,14 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
   Widget _buildHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 10),
-      child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
     );
   }
 
@@ -139,7 +192,10 @@ class _AddVehiclePageState extends State<AddVehiclePage> {
         decoration: InputDecoration(
           labelText: hint,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 14,
+          ),
         ),
         validator: (v) => v!.isEmpty ? "Vui lòng nhập thông tin" : null,
       ),

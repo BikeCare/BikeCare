@@ -6,7 +6,8 @@ import '../../helpers/utils.dart';
 
 class GarageDetailPage extends StatefulWidget {
   final Map<String, dynamic> garage;
-  const GarageDetailPage({super.key, required this.garage});
+  final Map<String, dynamic> user;
+  const GarageDetailPage({super.key, required this.garage, required this.user});
 
   @override
   State<GarageDetailPage> createState() => _GarageDetailPageState();
@@ -27,12 +28,15 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
   bool _isFavorited = false;
 
   // === THÔNG TIN USER (QUAN TRỌNG ĐỂ HIỆN CHỮ "BẠN") ===
-  final String _currentUserId = "user_001";
-  final String _currentUserName = "Minh Tùng"; // Tên người dùng đang đăng nhập
+  late final String _currentUserId;
+  late final String _currentUserName;
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = widget.user['user_id'] as String;
+    _currentUserName =
+        widget.user['full_name'] as String? ?? widget.user['email'] as String;
     _loadData();
   }
 
@@ -67,8 +71,9 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
       for (var r in reviews) {
         int rating = r['rating'] as int;
         total += rating;
-        if (_starCounts.containsKey(rating))
+        if (_starCounts.containsKey(rating)) {
           _starCounts[rating] = _starCounts[rating]! + 1;
+        }
       }
       _dynamicRating = total / reviews.length;
     } else {
@@ -252,10 +257,11 @@ class _GarageDetailPageState extends State<GarageDetailPage> {
       return;
     }
     try {
-      if (await canLaunchUrl(googleUrl))
+      if (await canLaunchUrl(googleUrl)) {
         await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
-      else
+      } else {
         await launchUrl(googleUrl);
+      }
     } catch (e) {
       print(e);
     }

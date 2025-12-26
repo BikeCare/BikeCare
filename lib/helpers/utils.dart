@@ -311,17 +311,16 @@ Future<List<Map<String, dynamic>>> getUserVehicles(String userId) async {
 }
 
 // =========================================================
-// VEHICLE DISPLAY NAME (vehicle_name -> brand fallback)
+// VEHICLE DISPLAY NAME (vehicle_name -> "Xe chưa đặt tên" fallback)
 // =========================================================
 String getVehicleDisplayName(Map<String, dynamic> vehicle) {
   final name = vehicle['vehicle_name'];
-  final brand = vehicle['brand'];
 
   if (name != null && name.toString().trim().isNotEmpty) {
     return name;
   }
 
-  return brand; // fallback nếu chưa đặt tên xe
+  return 'Xe chưa đặt tên'; // fallback nếu chưa đặt tên xe
 }
 
 // =========================================================
@@ -977,7 +976,7 @@ Future<void> addExpense({
     'expense_date': expenseDateIso,
     'category_id': categoryId,
     'garage_name': garageName,
-    'note': note,
+    'note': note, // Re-added to match schema
   });
 }
 
@@ -1094,6 +1093,39 @@ Future<List<Map<String, dynamic>>> getAllGarages() async {
         },
       )
       .toList();
+}
+
+// =========================================================
+// GET GARAGE BY ID
+// =========================================================
+Future<Map<String, dynamic>?> getGarageById(String garageId) async {
+  final db = await initializeDatabase();
+  final result = await db.query(
+    'garages',
+    where: 'garage_id = ?',
+    whereArgs: [garageId],
+  );
+
+  if (result.isEmpty) return null;
+
+  final garage = result.first;
+
+  // Map field names for compatibility with GarageDetailPage
+  return {
+    'id': garage['garage_id'],
+    'name': garage['garage_name'],
+    'address': garage['address'],
+    'phone': garage['phone'],
+    'rating': garage['rating'],
+    'image': garage['image'],
+    'images': garage['images'],
+    'distance': garage['distance'],
+    'services': garage['services'],
+    'opening_hours': garage['opening_hours'],
+    'description': garage['description'],
+    // Include all other fields as-is
+    ...garage,
+  };
 }
 
 // =========================================================

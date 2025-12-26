@@ -21,7 +21,7 @@ class _TrafficFinePageState extends State<TrafficFinePage> {
 
   // ================= MOCK API STATE =================
   final _plateController = TextEditingController();
-  String _vehicleType = 'car';
+  String _vehicleType = 'bike';
 
   final _service = TrafficFineMockService();
 
@@ -213,29 +213,7 @@ class _TrafficFinePageState extends State<TrafficFinePage> {
             ),
             dropdownColor: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded),
             items: const [
-              DropdownMenuItem(
-                value: 'car',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.directions_car_rounded,
-                      size: 20,
-                      color: Color(0xFF4F6472),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Ô tô',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               DropdownMenuItem(
                 value: 'bike',
                 child: Row(

@@ -94,29 +94,49 @@ class AppRouter {
       // === GARAGE ROUTES ===
       GoRoute(
         path: '/garage/list',
-        pageBuilder: (context, state) =>
-            _buildSlideTransition(context, state, const GarageListPage()),
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            GarageListPage(user: user),
+          );
+        },
       ),
       GoRoute(
         path: '/garage/detail',
         pageBuilder: (context, state) {
-          final garage = state.extra as Map<String, dynamic>;
+          final extra = state.extra as Map<String, dynamic>;
+          final garage = extra['garage'] as Map<String, dynamic>;
+          final user = extra['user'] as Map<String, dynamic>;
           return _buildSlideTransition(
             context,
             state,
-            GarageDetailPage(garage: garage),
+            GarageDetailPage(garage: garage, user: user),
           );
         },
       ),
       GoRoute(
         path: '/favorites',
-        pageBuilder: (context, state) =>
-            _buildSlideTransition(context, state, const FavoritePage()),
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            FavoritePage(user: user),
+          );
+        },
       ),
       GoRoute(
         path: '/add-vehicle',
-        pageBuilder: (context, state) =>
-            _buildSlideTransition(context, state, const AddVehiclePage()),
+        pageBuilder: (context, state) {
+          final user = state.extra as Map<String, dynamic>;
+          return _buildSlideTransition(
+            context,
+            state,
+            AddVehiclePage(user: user),
+          );
+        },
       ),
 
       // === BOOKING ROUTE ===

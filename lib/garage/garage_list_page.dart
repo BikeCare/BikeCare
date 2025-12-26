@@ -5,7 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../helpers/utils.dart';
 
 class GarageListPage extends StatefulWidget {
-  const GarageListPage({super.key});
+  final Map<String, dynamic> user;
+  const GarageListPage({super.key, required this.user});
 
   @override
   State<GarageListPage> createState() => _GarageListPageState();
@@ -174,7 +175,10 @@ class _GarageListPageState extends State<GarageListPage> {
 
   Widget _buildGarageCard(Map<String, dynamic> garage) {
     return GestureDetector(
-      onTap: () => context.push('/garage/detail', extra: garage),
+      onTap: () => context.push(
+        '/garage/detail',
+        extra: {'garage': garage, 'user': widget.user},
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),

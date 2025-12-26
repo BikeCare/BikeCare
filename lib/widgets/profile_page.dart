@@ -4,10 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'dart:io';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'terms_of_service_page.dart';
+import 'privacy_policy_page.dart';
 
 class UserProfilePage extends StatefulWidget {
-  final Map<String, dynamic> user; // nhận user từ router extra
-  const UserProfilePage({super.key, required this.user});
+  final Map<String, dynamic> user;
+  final Function(int)? onSwitchTab; // Add callback
+
+  const UserProfilePage({
+    super.key,
+    required this.user,
+    this.onSwitchTab, // Optional callback
+  });
 
   @override
   State<UserProfilePage> createState() => _UserProfilePageState();
@@ -272,7 +280,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                   BoxShadow(
                                     color: const Color(
                                       0xFF2E8EC7,
-                                    ).withOpacity(0.3),
+                                    ).withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 4),
                                   ),
@@ -372,12 +380,26 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     _buildActionItem(
                       'Điều khoản dịch vụ',
                       Icons.description_outlined,
-                      () {},
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TermsOfServicePage(),
+                          ),
+                        );
+                      },
                     ),
                     _buildActionItem(
                       'Chính sách quyền riêng tư',
                       Icons.security_outlined,
-                      () {},
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PrivacyPolicyPage(),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 35),
@@ -407,7 +429,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          backgroundColor: Colors.redAccent.withOpacity(0.05),
+                          backgroundColor: Colors.redAccent.withValues(
+                            alpha: 0.05,
+                          ),
                         ),
                       ),
                     ),
@@ -479,7 +503,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: const Color(0xFF2E8EC7).withOpacity(0.1),
+          color: const Color(0xFF2E8EC7).withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -507,11 +531,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _statColumn(Icons.directions_bike_rounded, '$_vehicleCount xe', () {}),
+        _statColumn(
+          Icons.directions_bike_rounded,
+          '$_vehicleCount xe',
+          () => widget.onSwitchTab?.call(1), // Switch to Garage tab (index 1)
+        ),
         _statColumn(
           Icons.favorite_rounded,
           'Yêu thích',
-          () => context.push('/favorites'),
+          () => context.push('/favorites', extra: widget.user),
         ),
         _statColumn(Icons.star_rounded, 'Đánh giá', () => _showMyReviews()),
       ],
@@ -546,6 +574,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white, // White background instead of pink
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -559,7 +588,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
               future: getUserReviews(_fullName), // Lấy review theo tên
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF2E8EC7), // App primary color
+                    ),
+                  );
                 }
                 if (snapshot.hasError) {
                   return Center(child: Text('Lỗi: ${snapshot.error}'));
@@ -582,7 +615,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: const Color(0xFF2E8EC7), // Cyan accent
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -593,6 +626,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E8EC7), // Cyan title
                         ),
                       ),
                     ),
@@ -602,48 +636,85 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         itemCount: reviews.length,
                         itemBuilder: (context, index) {
                           final r = reviews[index];
-                          return ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.amber,
-                              child: Icon(Icons.star, color: Colors.white),
-                            ),
-                            title: Text(
-                              r['garage_name'] ??
-                                  'Gara không xác định', // Tên gara
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                          return InkWell(
+                            onTap: () async {
+                              // Navigate to garage detail page
+                              final garageId = r['garage_id']?.toString();
+                              if (garageId != null) {
+                                Navigator.pop(context); // Close modal first
+
+                                // Fetch full garage data
+                                try {
+                                  final garageData = await getGarageById(
+                                    garageId,
+                                  );
+                                  if (garageData != null && context.mounted) {
+                                    context.push(
+                                      '/garage/detail',
+                                      extra: {
+                                        'garage': garageData,
+                                        'user': widget.user,
+                                      },
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Không thể mở garage: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            child: ListTile(
+                              leading: const CircleAvatar(
+                                backgroundColor: Colors.amber, // Yellow star
+                                child: Icon(Icons.star, color: Colors.white),
                               ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(r['comment'] ?? ''),
-                                const SizedBox(height: 4),
-                                Text(
-                                  r['created_at'] != null
-                                      ? r['created_at'].substring(0, 10)
-                                      : '',
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber[50],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${r['rating'] ?? 0} ★',
+                              title: Text(
+                                r['garage_name'] ??
+                                    'Gara không xác định', // Tên gara
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.amber,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(r['comment'] ?? ''),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    r['created_at'] != null
+                                        ? r['created_at'].substring(0, 10)
+                                        : '',
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(
+                                    alpha: 0.15,
+                                  ), // Light yellow background
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${r['rating'] ?? 0} ★',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber, // Yellow text
+                                  ),
                                 ),
                               ),
                             ),
